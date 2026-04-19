@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Início | Ruptura Renato</title>
+    <link rel="icon" href="logo.png" type="image/png">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">
+            <img src="logo.png" alt="Logo">
+            <span>Ruptura Renato</span>
+        </div>
+        <div class="user-profile">
+            <div class="user-info">
+                <span class="user-name" id="ui-nome">Carregando...</span>
+                <span class="user-role" id="ui-perfil">...</span>
+            </div>
+            <button id="btnSair" class="btn-back" style="margin:0; color: white; padding: 5px;"><span class="material-icons-round">logout</span></button>
+        </div>
+    </nav>
+    <main class="dashboard-container">
+        <header class="page-header text-center">
+            <h1 id="saudacao">Olá, Gestor.</h1>
+            <p>Selecione o módulo de trabalho.</p>
+        </header>
+        <div class="home-menu">
+            <a href="incluir.html" class="menu-card" style="text-decoration: none;">
+                <div class="icon-wrapper blue"><span class="material-icons-round">add_task</span></div>
+                <h2>Lançar Ruptura</h2>
+                <p>Registrar auditoria diária.</p>
+            </a>
+            <a href="dashboard.html" class="menu-card" style="text-decoration: none;">
+                <div class="icon-wrapper highlight-bg"><span class="material-icons-round">insights</span></div>
+                <h2>Dashboard</h2>
+                <p>Indicadores e KPIs.</p>
+            </a>
+            <a href="historico.html" class="menu-card" style="text-decoration: none;">
+                <div class="icon-wrapper" style="background-color: #f1f5f9; color: #475569;"><span class="material-icons-round">history</span></div>
+                <h2>Histórico</h2>
+                <p>Consultar lançamentos.</p>
+            </a>
+            <a href="usuarios.html" class="menu-card" id="cardUsuarios" style="display: none; text-decoration: none;">
+                <div class="icon-wrapper" style="background-color: #fee2e2; color: #dc2626;"><span class="material-icons-round">manage_accounts</span></div>
+                <h2>Gerenciar Acessos</h2>
+                <p>Cadastrar novas filiais.</p>
+            </a>
+        </div>
+    </main>
+    <script type="module" src="script.js"></script>
+</body>
+</html>

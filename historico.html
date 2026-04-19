@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Histórico | Ruptura Renato</title>
+    <link rel="icon" href="logo.png" type="image/png">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+    <a href="home.html" class="logo" style="text-decoration: none; color: white;">
+        <img src="logo.png" alt="Logo">
+        <span>Ruptura Renato</span>
+    </a>
+</nav>
+    </nav>
+    <main class="dashboard-container">
+        <div class="header-with-action">
+            <a href="home.html" class="btn-back" style="text-decoration: none;"><span class="material-icons-round">arrow_back</span> Voltar</a>
+            <h2 class="view-title">Histórico de Auditorias</h2>
+        </div>
+        
+        <div class="action-card" style="margin-bottom: 20px; padding: 20px;">
+            <div class="form-row">
+                <div class="form-group"><label>Mês</label><input type="month" id="filtroMes" class="filtro-input"></div>
+                <div class="form-group">
+                    <label>Departamento</label>
+                    <select id="filtroDepartamento" class="filtro-input"><option value="">Todos</option></select>
+                </div>
+                <div class="form-group">
+                    <label>Seção</label>
+                    <select id="filtroSecao" class="filtro-input"><option value="">Todas</option></select>
+                </div>
+                <div class="form-group" id="containerFiltroFilial">
+                    <label>Filial</label>
+                    <select id="filtroFilial" class="filtro-input">
+                        <option value="">Todas as Lojas</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-footer" style="margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 15px; justify-content: flex-end;">
+                <button id="btnBuscarHistorico" class="btn-primary">
+                    <span class="material-icons-round">search</span> Buscar Dados
+                </button>
+            </div>
+        </div>
+
+        <div class="action-card" style="padding: 0; overflow: hidden;">
+            <div class="table-responsive">
+                <table class="modern-table">
+                    <thead><tr><th>Data</th><th>Filial</th><th>Departamento</th><th>Seção</th><th>Audit./Depósito</th><th>% Ruptura</th></tr></thead>
+                    <tbody id="corpoTabela">
+                        <tr><td colspan="6" class="text-center" style="padding: 30px; color: var(--text-muted);">Defina os filtros acima e clique em "Buscar Dados" para carregar.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+    <script type="module" src="script.js"></script>
+</body>
+</html>

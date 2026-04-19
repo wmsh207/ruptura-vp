@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Importação em Massa | Ruptura Renato</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .import-box { background: white; padding: 30px; border-radius: 16px; margin-top: 20px; border: 1px solid var(--border-color); }
+        textarea { width: 100%; height: 200px; padding: 15px; border-radius: 8px; border: 1px solid #ccc; font-family: monospace; resize: vertical; }
+        .log-box { background: #1e293b; color: #4ade80; padding: 15px; border-radius: 8px; height: 150px; overflow-y: auto; font-family: monospace; font-size: 0.85rem; margin-top: 15px; }
+    </style>
+</head>
+<body>
+    <main class="dashboard-container">
+        <h2 class="view-title">Importação de Histórico (Excel para Firestore)</h2>
+        
+        <div class="import-box">
+            <p style="margin-bottom: 10px; color: var(--text-muted);">Cole abaixo as linhas copiadas do Excel (sem o cabeçalho). Certifique-se de que a ordem das colunas está correta.</p>
+            <textarea id="dadosExcel" placeholder="Cole os dados do Excel aqui..."></textarea>
+            
+            <button id="btnImportar" class="btn-primary" style="margin-top: 20px; width: 100%; justify-content: center;">
+                <span class="material-icons-round">cloud_upload</span> Iniciar Importação em Massa
+            </button>
+
+            <div id="logImportacao" class="log-box hidden">Aguardando início...</div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // ⚠️ COLOQUE SUAS CHAVES DO FIREBASE AQUI
+        const firebaseConfig = {
+            apiKey: "AIzaSyA_i9BkvMFIXxTTtJA6dyFc2HLXKP-TmHU",
+  authDomain: "wms-h7.firebaseapp.com",
+  projectId: "wms-h7",
+  storageBucket: "wms-h7.firebasestorage.app",
+  messagingSenderId: "274655939351",
+  appId: "1:274655939351:web:806d2b96064d67b16b8552"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        document.getElementById('btnImportar').addEventListener('click', async () => {
+            const texto = document.getElementById('dadosExcel').value;
+            const logBox = document.getElementById('logImportacao');
+            const btn = document.getElementById('btnImportar');
+            
+            if (!texto.trim()) {
+                alert("Cole os dados primeiro!");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = "Processando... Não feche a página!";
+            logBox.classList.remove('hidden');
+            logBox.innerHTML = "Iniciando leitura...\n";
+
+            // Separa o texto colado por linhas
+            const linhas = texto.trim().split('\n');
+            let sucesso = 0;
+            let erro = 0;
+
+            for (let i = 0; i < linhas.length; i++) {
+                // No Excel, ao copiar e colar, as colunas são separadas por TAB (\t)
+                const colunas = linhas[i].split('\t'); 
+                
+                if (colunas.length < 8) {
+                    logBox.innerHTML += `<span style="color: #f87171;">Linha ${i+1} ignorada (Faltam colunas)</span><br>`;
+                    erro++;
+                    continue;
+                }
+
+                try {
+                    const qtdRuptura = parseInt(colunas[4].trim()) || 0;
+                    const qtdDeposito = parseInt(colunas[6].trim()) || 0;
+                    const percentual = qtdRuptura > 0 ? parseFloat(((qtdDeposito / qtdRuptura) * 100).toFixed(2)) : 0;
+
+                    const registro = {
+                        data: colunas[0].trim(),
+                        filial: colunas[1].trim().toUpperCase(),
+                        departamento: colunas[2].trim(),
+                        secao: colunas[3].trim(),
+                        qtdRuptura: qtdRuptura,
+                        qtdLoja: parseInt(colunas[5].trim()) || 0,
+                        qtdDeposito: qtdDeposito,
+                        qtdSujeira: parseInt(colunas[7].trim()) || 0,
+                        indicadorLogistico: percentual,
+                        registradoPor: "importacao_excel@rupturatracker.com",
+                        timestamp: serverTimestamp()
+                    };
+
+                    await addDoc(collection(db, "auditorias_ruptura"), registro);
+                    sucesso++;
+                    
+                    // Rola o log para o final
+                    logBox.innerHTML += `Linha ${i+1} salva: ${registro.filial} - ${registro.secao}<br>`;
+                    logBox.scrollTop = logBox.scrollHeight;
+
+                } catch (e) {
+                    erro++;
+                    logBox.innerHTML += `<span style="color: #f87171;">Erro na linha ${i+1}: ${e.message}</span><br>`;
+                }
+            }
+
+            btn.innerText = "Importação Concluída!";
+            logBox.innerHTML += `<br><strong style="color: white;">FINALIZADO: ${sucesso} salvos, ${erro} erros.</strong>`;
+        });
+    </script>
+</body>
+</html>

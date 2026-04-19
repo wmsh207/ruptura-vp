@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lançamento | Ruptura Renato</title>
+    <link rel="icon" href="logo.png" type="image/png">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+    <a href="home.html" class="logo" style="text-decoration: none; color: white;">
+        <img src="logo.png" alt="Logo">
+        <span>Ruptura Renato</span>
+    </a>
+</nav>
+    </nav>
+    <main class="dashboard-container">
+        <a href="home.html" class="btn-back" style="text-decoration: none;"><span class="material-icons-round">arrow_back</span> Voltar</a>
+        <div class="action-card">
+            <div class="card-header"><h2><span class="material-icons-round">add_task</span> Novo Lançamento</h2></div>
+            <form id="formRuptura" class="modern-form">
+                
+                <div class="form-row" style="grid-template-columns: 1fr 2fr 2fr;">
+                    <div class="form-group"><label>Data</label><input type="date" id="dataAuditoria" required></div>
+                    <div class="form-group">
+                        <label>Departamento</label>
+                        <select id="departamento" required>
+                            <option value="">1º Escolha o Departamento...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Seção Auditada</label>
+                        <select id="secao" required disabled style="background-color: #e2e8f0;">
+                            <option value="">2º Aguardando departamento...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="divider"></div>
+                <div class="form-grid-4">
+                    <div class="form-group"><label>Total Ruptura</label><input type="number" id="qtdRuptura" min="0" required></div>
+                    <div class="form-group"><label>Exposto</label><input type="number" id="qtdLoja" min="0" required></div>
+                    <div class="form-group"><label>Depósito</label><input type="number" id="qtdDeposito" min="0" required></div>
+                    <div class="form-group"><label>Sujeira Sist.</label><input type="number" id="qtdSujeira" min="0" required></div>
+                </div>
+                <div class="form-footer">
+                    <div id="msgSucesso" class="hidden alert-success"><span class="material-icons-round">check_circle</span> Salvo!</div>
+                    <button type="submit" class="btn-primary">Salvar Auditoria</button>
+                </div>
+            </form>
+        </div>
+    </main>
+    <script type="module" src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Executivo | Ruptura Renato</title>
+    <link rel="icon" href="logo.png" type="image/png">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="home.html" class="logo" style="text-decoration: none; color: white;">
+            <img src="logo.png" alt="Logo">
+            <span>Ruptura Renato</span>
+        </a>
+        <div class="user-profile">
+            <div class="user-info"><span class="user-name" id="ui-nome">Carregando...</span><span class="user-role" id="ui-perfil">...</span></div>
+        </div>
+    </nav>
+
+    <main class="dashboard-container">
+        <div class="header-with-action">
+            <a href="home.html" class="btn-back" style="text-decoration: none;"><span class="material-icons-round">arrow_back</span> Voltar</a>
+            <h2 class="view-title">Painel de Controle Regional</h2>
+        </div>
+
+        <div class="action-card" style="margin-bottom: 20px; padding: 20px;">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Período</label>
+                    <input type="month" id="dashMes" class="filtro-input">
+                </div>
+                <div class="form-group" id="containerDashFilial">
+                    <label>Unidade / Filial</label>
+                    <select id="dashFilial" class="filtro-input">
+                        <option value="">Visão Regional (Todas as Lojas)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <section class="kpi-grid">
+            <div class="kpi-card highlight">
+                <div class="kpi-info">
+                    <h3>% Ruptura (Depósito)</h3>
+                    <p class="big-number" id="kpiPercentual">--%</p>
+                    <small style="color: #e2e8f0;">Meta: < 5% (Menor é melhor)</small>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon blue"><span class="material-icons-round">inventory</span></div>
+                <div class="kpi-info">
+                    <h3>Itens Auditados</h3>
+                    <p class="big-number" id="kpiRupturaVolume" style="font-size: 1.5rem !important;">0</p>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon red"><span class="material-icons-round">trending_up</span></div>
+                <div class="kpi-info">
+                    <h3>Pior Departamento</h3>
+                    <p id="kpiOfensor">...</p>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon" style="background-color: #fef3c7; color: #d97706;"><span class="material-icons-round">leaderboard</span></div>
+                <div class="kpi-info">
+                    <h3>Loja Crítica</h3>
+                    <p id="kpiPiorLoja">...</p>
+                </div>
+            </div>
+        </section>
+
+        <div class="charts-grid">
+            <div class="chart-container">
+                <h3 class="section-title" style="margin-bottom: 15px;">Evolução da Ruptura (%)</h3>
+                <div style="position: relative; height: 300px; width: 100%;">
+                    <canvas id="chartEvolucao"></canvas>
+                </div>
+            </div>
+            <div class="chart-container" id="containerChartLojas">
+                <h3 class="section-title" style="margin-bottom: 15px;">Ranking (Lojas)</h3>
+                <div style="position: relative; height: 300px; width: 100%;">
+                    <canvas id="chartLojas"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="action-card" style="margin-top: 30px; padding: 0; overflow: hidden;">
+            <div class="card-header" style="padding: 20px;">
+                <h3 class="section-title"><span class="material-icons-round">table_chart</span> Desempenho por Categoria</h3>
+            </div>
+            <div class="table-responsive">
+                <table class="modern-table">
+                    <thead>
+                        <tr>
+                            <th>Departamento</th>
+                            <th>Auditados</th>
+                            <th>No Depósito</th>
+                            <th>% Ruptura</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaDepto">
+                        <tr><td colspan="5" class="text-center" style="padding: 20px;">Selecione os filtros...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>

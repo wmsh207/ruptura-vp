@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acesso | Ruptura Renato</title>
+    <link rel="icon" href="logo.png" type="image/png">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+</head>
+<body>
+    <div class="login-wrapper">
+        <div class="login-box">
+            <div class="login-logo">
+                <img src="logo.png" alt="Logo Empresa">
+                <h2>Ruptura Renato</h2>
+                <p>Acesso Operacional</p>
+            </div>
+            
+            <form id="formLogin" class="modern-form">
+                <div class="form-group">
+                    <label>Usuário da Unidade</label>
+                    <input type="text" id="emailInput" required placeholder="Ex: h07 ou regional">
+                </div>
+                
+                <div id="msgErroLogin" class="hidden alert-danger">
+                    <span class="material-icons-round">error_outline</span> Usuário não autorizado.
+                </div>
+                
+                <button type="submit" class="btn-primary w-100" id="btnEntrar" style="justify-content: center;">Entrar no Sistema</button>
+            </form>
+        </div>
+    </div>
+    <script type="module" src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Acessos | Ruptura Renato</title>
+    <link rel="icon" href="logo.png" type="image/png">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+    <a href="home.html" class="logo" style="text-decoration: none; color: white;">
+        <img src="logo.png" alt="Logo">
+        <span>Ruptura Renato</span>
+    </a>
+</nav>
+    <main class="dashboard-container">
+        <div class="header-with-action">
+            <a href="home.html" class="btn-back" style="text-decoration: none;"><span class="material-icons-round">arrow_back</span> Voltar</a>
+            <h2 class="view-title">Gerenciar Acessos</h2>
+        </div>
+
+        <div class="action-card" style="margin-bottom: 30px;">
+            <div class="card-header"><h2><span class="material-icons-round">person_add</span> Autorizar Nova Unidade</h2></div>
+            <form id="formUsuario" class="modern-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Identificador</label>
+                        <input type="text" id="emailNovoUser" required placeholder="Ex: h10 ou regional.vp">
+                    </div>
+                    <div class="form-group">
+                        <label>Permissão</label>
+                        <select id="nivelAcesso" required>
+                            <option value="filial">Unidade (Acesso Restrito)</option>
+                            <option value="regional">Regional (Acesso Total)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="justify-content: flex-end;">
+                        <button type="submit" class="btn-primary" id="btnCriarUser">Autorizar</button>
+                    </div>
+                </div>
+                <div class="form-footer">
+                    <div id="msgSucessoUser" class="hidden alert-success">Cadastrado!</div>
+                    <div id="msgErroUser" class="hidden alert-danger"></div>
+                </div>
+            </form>
+        </div>
+
+        <div class="action-card" style="padding: 0; overflow: hidden;">
+            <div class="card-header" style="padding: 20px;"><h2><span class="material-icons-round">group</span> Acessos Ativos</h2></div>
+            <div class="table-responsive">
+                <table class="modern-table">
+                    <thead>
+                        <tr>
+                            <th>Identificador</th>
+                            <th>Nível de Acesso</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listaUsuariosCadastrados">
+                        <tr><td colspan="3" class="text-center" style="padding: 20px;">Carregando lista de acessos...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+    <script type="module" src="script.js"></script>
+</body>
+</html>
