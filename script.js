@@ -2,6 +2,9 @@ import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
+// =========================================================================
+// ⚠️ ATENÇÃO: COLOQUE SUAS CHAVES DO FIREBASE ABAIXO! ⚠️
+// =========================================================================
 const firebaseConfig = {
     apiKey: "AIzaSyA_i9BkvMFIXxTTtJA6dyFc2HLXKP-TmHU",
   authDomain: "wms-h7.firebaseapp.com",
@@ -155,7 +158,7 @@ if (formRup) {
 }
 
 // ==========================================
-// 4. DASHBOARD EXECUTIVO
+// 4. DASHBOARD EXECUTIVO (COM LOCAL CACHING)
 // ==========================================
 async function carregarDashboard(email) {
     const isReg = email.includes('regional');
@@ -184,15 +187,30 @@ async function carregarDashboard(email) {
         filialInput.value = lojaBase;
     }
 
+    // 🚀 A BLINDAGEM DO BANCO DE DADOS ACONTECE AQUI
+    let cacheDadosBrutos = null; 
+    let mesBuscadoNoCache = "";
+
     async function processarDados() {
         const m = mesInput.value;
         const f = isReg ? filialInput.value : lojaBase;
-        const snap = await getDocs(isReg ? collection(db, "auditorias_ruptura") : query(collection(db, "auditorias_ruptura"), where("filial", "==", lojaBase)));
+        
+        // Só vai no Firebase se for o primeiro carregamento ou se mudarem o Mês
+        if (!cacheDadosBrutos || mesBuscadoNoCache !== m) {
+            // Mostra pro usuário que está processando
+            document.getElementById('kpiOfensor').innerText = "Baixando da nuvem...";
+            
+            const snap = await getDocs(isReg ? collection(db, "auditorias_ruptura") : query(collection(db, "auditorias_ruptura"), where("filial", "==", lojaBase)));
+            
+            cacheDadosBrutos = [];
+            snap.forEach(doc => cacheDadosBrutos.push(doc.data()));
+            mesBuscadoNoCache = m;
+        }
 
         let stats = { tr: 0, td: 0, deptos: {}, lojas: {}, evolucao: {} };
 
-        snap.forEach(doc => {
-            const v = doc.data();
+        // Agora o loop roda na MEMÓRIA RAM do computador, custo ZERO pro Firebase
+        cacheDadosBrutos.forEach(v => {
             if ((!m || v.data.startsWith(m)) && (!f || v.filial === f)) {
                 stats.tr += v.qtdRuptura;
                 stats.td += v.qtdDeposito;
@@ -277,11 +295,11 @@ async function carregarDashboard(email) {
 
     mesInput.addEventListener('change', processarDados);
     filialInput.addEventListener('change', processarDados);
-    processarDados();
+    processarDados(); // Dispara na primeira vez que abre a tela
 }
 
 // ==========================================
-// 5. HISTÓRICO (AGORA COM BOTÃO DE BUSCA)
+// 5. HISTÓRICO (JÁ ESTAVA PROTEGIDO PELO BOTÃO BUSCAR)
 // ==========================================
 async function carregarHistorico(email) {
     const isReg = email.includes('regional');
@@ -310,7 +328,6 @@ async function carregarHistorico(email) {
     const mesInput = document.getElementById('filtroMes');
     mesInput.value = new Date().toISOString().slice(0, 7);
 
-    // Carrega Cascata de Departamento e Seção
     try {
         const res = await fetch('secoes.json');
         const mapaJson = await res.json();
@@ -319,8 +336,6 @@ async function carregarHistorico(email) {
 
         Object.keys(mapaJson).sort().forEach(dep => fDepto.innerHTML += `<option value="${dep}">${dep}</option>`);
 
-        // A mudança no departamento continua mudando as seções na hora, 
-        // mas NÃO DISPARA mais a busca no banco de dados.
         fDepto.addEventListener('change', (e) => {
             const depEscolhido = e.target.value;
             fSecao.innerHTML = `<option value="">Todas</option>`;
@@ -332,9 +347,7 @@ async function carregarHistorico(email) {
         });
     } catch(e) { console.error("Erro no JSON", e); }
 
-    // FUNÇÃO DE BUSCA CONTROLADA PELO BOTÃO
     async function buscar() {
-        // Efeito visual no botão
         const textoOriginal = btnBuscar.innerHTML;
         btnBuscar.innerHTML = `<span class="material-icons-round">sync</span> Buscando...`;
         btnBuscar.disabled = true;
@@ -368,13 +381,11 @@ async function carregarHistorico(email) {
         } catch (error) {
             corpo.innerHTML = `<tr><td colspan="6" class="text-center" style="padding: 20px; color: red;">Erro ao buscar dados.</td></tr>`;
         } finally {
-            // Devolve o botão ao normal
             btnBuscar.innerHTML = textoOriginal;
             btnBuscar.disabled = false;
         }
     }
 
-    // A mágica acontece só quando clica no botão!
     btnBuscar.addEventListener('click', buscar);
 }
 
