@@ -1,50 +1,44 @@
-import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
 // =========================================================================
-// ⚠️ ATENÇÃO: COLOQUE SUAS CHAVES DO FIREBASE ABAIXO! ⚠️
+// 1. CONFIGURAÇÕES DA API (ADEUS FIREBASE!)
 // =========================================================================
-const firebaseConfig = {
-    apiKey: "AIzaSyA_i9BkvMFIXxTTtJA6dyFc2HLXKP-TmHU",
-  authDomain: "wms-h7.firebaseapp.com",
-  projectId: "wms-h7",
-  storageBucket: "wms-h7.firebasestorage.app",
-  messagingSenderId: "274655939351",
-  appId: "1:274655939351:web:806d2b96064d67b16b8552"
-};
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+// ⚠️ COLE AQUI A URL DO SEU APP DA WEB DO GOOGLE SHEETS ⚠️
+const API_URL = "https://script.google.com/macros/s/AKfycbwKhNBDsJ8PcTi43mqqFLneRX1yvvjKKiORs2vY89k9ulJSTUDfegF3bFEigHhQddjunQ/exec"; 
 
-const SENHA_SISTEMA = "Pinda@2026Operacional";
-const DOMINIO = "@rupturatracker.com";
 const paginaAtual = window.location.pathname;
 
 let chartEvoInstance = null;
 let chartLojaInstance = null;
 
 // ==========================================
-// 1. ROTEAMENTO E MONITOR DE ACESSO
+// 2. MONITOR DE SESSÃO LOCAL
 // ==========================================
-onAuthStateChanged(auth, (user) => {
+function verificarSessao() {
+    // Puxa quem está logado diretamente da memória do navegador
+    const usuarioLogado = localStorage.getItem('usuarioRuptura');
     const isLogin = paginaAtual.includes('index.html') || paginaAtual === '/' || paginaAtual.endsWith('/');
-    if (user) {
-        if (isLogin) window.location.href = 'home.html';
-        else {
-            configurarInterface(user.email);
-            if (paginaAtual.includes('incluir.html')) carregarOpcoesInclusao();
-            if (paginaAtual.includes('dashboard.html')) carregarDashboard(user.email);
-            if (paginaAtual.includes('historico.html')) carregarHistorico(user.email);
-            if (paginaAtual.includes('usuarios.html')) carregarGerenciamentoUsuarios(user.email);
-        }
-    } else if (!isLogin) window.location.href = 'index.html';
-});
 
-function configurarInterface(email) {
-    const userPart = email.split('@')[0].toUpperCase();
-    const isRegional = email.includes('regional');
+    if (usuarioLogado) {
+        if (isLogin) {
+            window.location.href = 'home.html';
+        } else {
+            configurarInterface(usuarioLogado);
+            if (paginaAtual.includes('incluir.html')) carregarOpcoesInclusao();
+            if (paginaAtual.includes('dashboard.html')) carregarDashboard(usuarioLogado);
+            if (paginaAtual.includes('historico.html')) carregarHistorico(usuarioLogado);
+            if (paginaAtual.includes('usuarios.html')) carregarGerenciamentoUsuarios(usuarioLogado);
+        }
+    } else {
+        if (!isLogin) window.location.href = 'index.html';
+    }
+}
+
+// Executa a verificação assim que a página carrega
+document.addEventListener('DOMContentLoaded', verificarSessao);
+
+function configurarInterface(ident) {
+    const userPart = ident.toUpperCase();
+    const isRegional = ident === 'regional';
     
     const elNome = document.getElementById('ui-nome');
     const elPerfil = document.getElementById('ui-perfil');
@@ -63,7 +57,7 @@ function configurarInterface(email) {
 }
 
 // ==========================================
-// 2. LOGIN E LOGOUT
+// 3. LOGIN E LOGOUT DIRETOS NA PLANILHA
 // ==========================================
 const formLogin = document.getElementById('formLogin');
 if (formLogin) {
@@ -71,21 +65,48 @@ if (formLogin) {
         e.preventDefault();
         const ident = document.getElementById('emailInput').value.trim().toLowerCase();
         const btn = document.getElementById('btnEntrar');
-        btn.innerText = "Acessando...";
+        btn.innerText = "Verificando permissão...";
+        
         try {
-            await signInWithEmailAndPassword(auth, ident + DOMINIO, SENHA_SISTEMA);
+            // Busca a lista de usuários na aba "Usuarios" da planilha
+            const res = await fetch(API_URL + "?action=usuarios");
+            const usuarios = await res.json();
+            
+            let usuarioValido = false;
+            
+            // O acesso 'regional' é fixo. Outras lojas devem estar na planilha.
+            if (ident === 'regional') {
+                usuarioValido = true;
+            } else {
+                usuarioValido = usuarios.some(u => String(u.identificador).toLowerCase() === ident);
+            }
+
+            if (usuarioValido) {
+                // Salva a sessão na memória do navegador e entra
+                localStorage.setItem('usuarioRuptura', ident);
+                window.location.href = 'home.html';
+            } else {
+                document.getElementById('msgErroLogin').classList.remove('hidden');
+                document.getElementById('msgErroLogin').innerHTML = '<span class="material-icons-round">error_outline</span> Usuário não cadastrado.';
+                btn.innerText = "Entrar no Sistema";
+            }
         } catch (err) {
-            document.getElementById('msgErroLogin').classList.remove('hidden');
+            alert("Erro de conexão com o banco de dados. Tente novamente.");
             btn.innerText = "Entrar no Sistema";
         }
     });
 }
 
 const btnSair = document.getElementById('btnSair');
-if (btnSair) btnSair.addEventListener('click', () => signOut(auth));
+if (btnSair) {
+    btnSair.addEventListener('click', () => {
+        localStorage.removeItem('usuarioRuptura');
+        window.location.href = 'index.html';
+    });
+}
 
 // ==========================================
-// 3. INCLUIR RUPTURA
+// 4. INCLUIR RUPTURA (GRAVANDO NO SHEETS)
 // ==========================================
 async function carregarOpcoesInclusao() {
     const selectDepto = document.getElementById('departamento');
@@ -127,42 +148,56 @@ if (formRup) {
         const btn = e.target.querySelector('button');
         btn.innerText = "Salvando...";
         
-        const emailLogado = auth.currentUser.email;
-        const filialCalculada = emailLogado.split('@')[0].toUpperCase().replace('H', 'H-');
+        const identLogado = localStorage.getItem('usuarioRuptura');
+        const filialCalculada = identLogado.toUpperCase().replace('H', 'H-');
 
         const qtdR = parseInt(document.getElementById('qtdRuptura').value);
         const qtdD = parseInt(document.getElementById('qtdDeposito').value);
         const perc = qtdR > 0 ? parseFloat(((qtdD / qtdR) * 100).toFixed(2)) : 0;
         
         try {
-            await addDoc(collection(db, "auditorias_ruptura"), {
+            const registro = {
+                tipo: "auditoria",
                 data: document.getElementById('dataAuditoria').value,
                 filial: filialCalculada,
                 departamento: document.getElementById('departamento').value,
                 secao: document.getElementById('secao').value,
-                qtdRuptura: qtdR, qtdLoja: parseInt(document.getElementById('qtdLoja').value),
-                qtdDeposito: qtdD, qtdSujeira: parseInt(document.getElementById('qtdSujeira').value),
+                qtdRuptura: qtdR,
+                qtdLoja: parseInt(document.getElementById('qtdLoja').value),
+                qtdDeposito: qtdD,
+                qtdSujeira: parseInt(document.getElementById('qtdSujeira').value),
                 indicadorLogistico: perc,
-                registradoPor: emailLogado, timestamp: serverTimestamp()
+                registradoPor: identLogado
+            };
+
+            const resposta = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify(registro)
             });
-            document.getElementById('msgSucesso').classList.remove('hidden');
-            setTimeout(() => document.getElementById('msgSucesso').classList.add('hidden'), 3000);
-            e.target.reset();
-            document.getElementById('dataAuditoria').valueAsDate = new Date();
-            document.getElementById('secao').disabled = true;
-            document.getElementById('secao').style.backgroundColor = '#e2e8f0';
-            configurarInterface(auth.currentUser.email);
-        } catch (err) { alert("Erro ao salvar."); }
+
+            const resultado = await resposta.json();
+            
+            if(resultado.status === "sucesso") {
+                document.getElementById('msgSucesso').classList.remove('hidden');
+                setTimeout(() => document.getElementById('msgSucesso').classList.add('hidden'), 3000);
+                e.target.reset();
+                document.getElementById('dataAuditoria').valueAsDate = new Date();
+                document.getElementById('secao').disabled = true;
+                document.getElementById('secao').style.backgroundColor = '#e2e8f0';
+            } else {
+                alert("Erro ao salvar.");
+            }
+        } catch (err) { alert("Erro de conexão ao salvar."); }
         finally { btn.innerText = "Salvar Auditoria"; }
     });
 }
 
 // ==========================================
-// 4. DASHBOARD EXECUTIVO (COM LOCAL CACHING)
+// 5. DASHBOARD EXECUTIVO
 // ==========================================
-async function carregarDashboard(email) {
-    const isReg = email.includes('regional');
-    const lojaBase = email.split('@')[0].toUpperCase().replace('H', 'H-');
+async function carregarDashboard(ident) {
+    const isReg = ident === 'regional';
+    const lojaBase = ident.toUpperCase().replace('H', 'H-');
     
     const mesInput = document.getElementById('dashMes');
     const filialInput = document.getElementById('dashFilial');
@@ -171,62 +206,65 @@ async function carregarDashboard(email) {
     mesInput.value = new Date().toISOString().slice(0, 7);
 
     if (isReg) {
-        const snapUsers = await getDocs(collection(db, "perfil_usuarios"));
-        let lojasCadastradas = [];
-        snapUsers.forEach(doc => {
-            const u = doc.data();
-            if (u.permissao !== 'regional') lojasCadastradas.push(u.identificador.toUpperCase().replace('H', 'H-'));
-        });
-        
-        filialInput.innerHTML = '<option value="">Visão Regional (Todas as Lojas)</option>';
-        lojasCadastradas.sort().forEach(lojaID => {
-            filialInput.innerHTML += `<option value="${lojaID}">${lojaID}</option>`;
-        });
+        try {
+            const resU = await fetch(API_URL + "?action=usuarios");
+            const snapUsers = await resU.json();
+            
+            filialInput.innerHTML = '<option value="">Visão Regional (Todas as Lojas)</option>';
+            let lojasCadastradas = [];
+            snapUsers.forEach(u => {
+                if (u.permissao !== 'regional') lojasCadastradas.push(String(u.identificador).toUpperCase().replace('H', 'H-'));
+            });
+            lojasCadastradas.sort().forEach(lojaID => {
+                filialInput.innerHTML += `<option value="${lojaID}">${lojaID}</option>`;
+            });
+        } catch (e) { console.error("Erro ao carregar lojas", e); }
     } else {
         containerFilial.style.display = 'none';
         filialInput.value = lojaBase;
     }
 
-    // 🚀 A BLINDAGEM DO BANCO DE DADOS ACONTECE AQUI
     let cacheDadosBrutos = null; 
-    let mesBuscadoNoCache = "";
 
     async function processarDados() {
         const m = mesInput.value;
         const f = isReg ? filialInput.value : lojaBase;
         
-        // Só vai no Firebase se for o primeiro carregamento ou se mudarem o Mês
-        if (!cacheDadosBrutos || mesBuscadoNoCache !== m) {
-            // Mostra pro usuário que está processando
-            document.getElementById('kpiOfensor').innerText = "Baixando da nuvem...";
-            
-            const snap = await getDocs(isReg ? collection(db, "auditorias_ruptura") : query(collection(db, "auditorias_ruptura"), where("filial", "==", lojaBase)));
-            
-            cacheDadosBrutos = [];
-            snap.forEach(doc => cacheDadosBrutos.push(doc.data()));
-            mesBuscadoNoCache = m;
+        if (!cacheDadosBrutos) {
+            document.getElementById('kpiOfensor').innerText = "Baixando dados...";
+            try {
+                const res = await fetch(API_URL);
+                cacheDadosBrutos = await res.json();
+            } catch (error) {
+                console.error("Erro ao ler.");
+                return;
+            }
         }
 
         let stats = { tr: 0, td: 0, deptos: {}, lojas: {}, evolucao: {} };
 
-        // Agora o loop roda na MEMÓRIA RAM do computador, custo ZERO pro Firebase
         cacheDadosBrutos.forEach(v => {
-            if ((!m || v.data.startsWith(m)) && (!f || v.filial === f)) {
-                stats.tr += v.qtdRuptura;
-                stats.td += v.qtdDeposito;
+            let dataLida = String(v.data).split("T")[0]; 
+
+            if ((!m || dataLida.startsWith(m)) && (!f || v.filial === f)) {
+                let qR = Number(v.qtdRuptura) || 0;
+                let qD = Number(v.qtdDeposito) || 0;
+
+                stats.tr += qR;
+                stats.td += qD;
 
                 const d = v.departamento || 'Outros';
                 if (!stats.deptos[d]) stats.deptos[d] = { r: 0, d: 0 };
-                stats.deptos[d].r += v.qtdRuptura;
-                stats.deptos[d].d += v.qtdDeposito;
+                stats.deptos[d].r += qR;
+                stats.deptos[d].d += qD;
 
                 if (!stats.lojas[v.filial]) stats.lojas[v.filial] = { r: 0, d: 0 };
-                stats.lojas[v.filial].r += v.qtdRuptura;
-                stats.lojas[v.filial].d += v.qtdDeposito;
+                stats.lojas[v.filial].r += qR;
+                stats.lojas[v.filial].d += qD;
 
-                if (!stats.evolucao[v.data]) stats.evolucao[v.data] = { r: 0, d: 0 };
-                stats.evolucao[v.data].r += v.qtdRuptura;
-                stats.evolucao[v.data].d += v.qtdDeposito;
+                if (!stats.evolucao[dataLida]) stats.evolucao[dataLida] = { r: 0, d: 0 };
+                stats.evolucao[dataLida].r += qR;
+                stats.evolucao[dataLida].d += qD;
             }
         });
 
@@ -295,15 +333,15 @@ async function carregarDashboard(email) {
 
     mesInput.addEventListener('change', processarDados);
     filialInput.addEventListener('change', processarDados);
-    processarDados(); // Dispara na primeira vez que abre a tela
+    processarDados(); 
 }
 
 // ==========================================
-// 5. HISTÓRICO (JÁ ESTAVA PROTEGIDO PELO BOTÃO BUSCAR)
+// 6. HISTÓRICO
 // ==========================================
-async function carregarHistorico(email) {
-    const isReg = email.includes('regional');
-    const loja = email.split('@')[0].toUpperCase().replace('H', 'H-');
+async function carregarHistorico(ident) {
+    const isReg = ident === 'regional';
+    const loja = ident.toUpperCase().replace('H', 'H-');
     
     const containerFilial = document.getElementById('containerFiltroFilial');
     const filialInput = document.getElementById('filtroFilial');
@@ -312,17 +350,19 @@ async function carregarHistorico(email) {
     if (!isReg) {
         containerFilial.style.display = 'none';
     } else {
-        const snapUsers = await getDocs(collection(db, "perfil_usuarios"));
-        let lojasCadastradas = [];
-        snapUsers.forEach(doc => {
-            const u = doc.data();
-            if (u.permissao !== 'regional') lojasCadastradas.push(u.identificador.toUpperCase().replace('H', 'H-'));
-        });
-        
-        filialInput.innerHTML = '<option value="">Todas as Lojas</option>';
-        lojasCadastradas.sort().forEach(lojaID => {
-            filialInput.innerHTML += `<option value="${lojaID}">${lojaID}</option>`;
-        });
+        try {
+            const resU = await fetch(API_URL + "?action=usuarios");
+            const snapUsers = await resU.json();
+            
+            filialInput.innerHTML = '<option value="">Todas as Lojas</option>';
+            let lojasCadastradas = [];
+            snapUsers.forEach(u => {
+                if (u.permissao !== 'regional') lojasCadastradas.push(String(u.identificador).toUpperCase().replace('H', 'H-'));
+            });
+            lojasCadastradas.sort().forEach(lojaID => {
+                filialInput.innerHTML += `<option value="${lojaID}">${lojaID}</option>`;
+            });
+        } catch (e) { console.error("Erro ao carregar lojas", e); }
     }
     
     const mesInput = document.getElementById('filtroMes');
@@ -353,29 +393,63 @@ async function carregarHistorico(email) {
         btnBuscar.disabled = true;
 
         const corpo = document.getElementById('corpoTabela');
-        corpo.innerHTML = `<tr><td colspan="6" class="text-center" style="padding: 20px;">Carregando dados da nuvem...</td></tr>`;
+        corpo.innerHTML = `<tr><td colspan="6" class="text-center" style="padding: 20px;">Lendo dados...</td></tr>`;
 
         try {
-            const snap = await getDocs(isReg ? collection(db, "auditorias_ruptura") : query(collection(db, "auditorias_ruptura"), where("filial", "==", loja)));
+            const res = await fetch(API_URL);
+            const dadosPlanilha = await res.json();
+            
             const m = mesInput.value;
             const dpto = document.getElementById('filtroDepartamento').value;
             const s = document.getElementById('filtroSecao').value;
-            const f = filialInput.value;
+            const f = isReg ? filialInput.value : loja;
             
             corpo.innerHTML = '';
-            let encontrou = false;
-
-            snap.forEach(d => {
-                const v = d.data();
-                if ((!m || v.data.startsWith(m)) && (!dpto || v.departamento === dpto) && (!s || v.secao === s) && (!f || v.filial === f)) {
-                    encontrou = true;
-                    const badgeClass = v.indicadorLogistico <= 5 ? 'good' : 'danger';
-                    corpo.innerHTML += `<tr><td>${v.data.split('-').reverse().join('/')}</td><td>${v.filial}</td><td><strong>${v.departamento || '-'}</strong></td><td>${v.secao}</td><td>${v.qtdRuptura}/${v.qtdDeposito}</td><td><span class="badge-kpi ${badgeClass}">${v.indicadorLogistico.toFixed(2)}%</span></td></tr>`;
-                }
+            
+            // 1. FILTRAGEM: Aplica os filtros selecionados na tela
+            let dadosFiltrados = dadosPlanilha.filter(v => {
+                let dataLida = String(v.data).split("T")[0];
+                return ((!m || dataLida.startsWith(m)) && (!dpto || v.departamento === dpto) && (!s || v.secao === s) && (!f || v.filial === f));
             });
 
-            if (!encontrou) {
-                corpo.innerHTML = `<tr><td colspan="6" class="text-center" style="padding: 20px; color: var(--text-muted);">Nenhum lançamento encontrado para estes filtros.</td></tr>`;
+            // 2. ORDENAÇÃO: Organiza por data de forma decrescente (Mais recentes primeiro)
+            dadosFiltrados.sort((a, b) => {
+                let dataA = String(a.data).split("T")[0];
+                let dataB = String(b.data).split("T")[0];
+                return dataB.localeCompare(dataA);
+            });
+
+            // 3. LIMITAÇÃO: Extrai apenas os primeiros 500 registros ordenados
+            let dadosLimitados = dadosFiltrados.slice(0, 500);
+            
+            if (dadosLimitados.length === 0) {
+                corpo.innerHTML = `<tr><td colspan="6" class="text-center" style="padding: 20px; color: var(--text-muted);">Nenhum lançamento encontrado.</td></tr>`;
+                return;
+            }
+
+            // 4. RENDERIZAÇÃO: Desenha as linhas na tabela
+            dadosLimitados.forEach(v => {
+                let dataLida = String(v.data).split("T")[0];
+                let indic = Number(v.indicadorLogistico) || 0;
+                const badgeClass = indic <= 5 ? 'good' : 'danger';
+                
+                corpo.innerHTML += `<tr>
+                    <td>${dataLida.split('-').reverse().join('/')}</td>
+                    <td>${v.filial}</td>
+                    <td><strong>${v.departamento || '-'}</strong></td>
+                    <td>${v.secao}</td>
+                    <td>${v.qtdRuptura}/${v.qtdDeposito}</td>
+                    <td><span class="badge-kpi ${badgeClass}">${indic.toFixed(2)}%</span></td>
+                </tr>`;
+            });
+
+            // 5. AVISO DE CORTE: Alerta o usuário caso existam mais registros ocultos
+            if (dadosFiltrados.length > 500) {
+                corpo.innerHTML += `<tr>
+                    <td colspan="6" class="text-center" style="padding: 15px; background: #f8fafc; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">
+                        ⚠️ Exibindo os 500 lançamentos mais recentes de um total de ${dadosFiltrados.length}. Use os filtros acima para refinar a busca.
+                    </td>
+                </tr>`;
             }
 
         } catch (error) {
@@ -385,46 +459,67 @@ async function carregarHistorico(email) {
             btnBuscar.disabled = false;
         }
     }
-
     btnBuscar.addEventListener('click', buscar);
 }
 
 // ==========================================
-// 6. GERENCIAMENTO DE USUÁRIOS
+// 7. GERENCIAMENTO DE USUÁRIOS
 // ==========================================
-async function carregarGerenciamentoUsuarios(email) {
-    if (!email.includes('regional')) { window.location.href = 'home.html'; return; }
+async function carregarGerenciamentoUsuarios(ident) {
+    if (ident !== 'regional') { window.location.href = 'home.html'; return; }
     
     const listar = async () => {
         const corpo = document.getElementById('listaUsuariosCadastrados');
-        corpo.innerHTML = '';
-        const snap = await getDocs(collection(db, "perfil_usuarios"));
-        snap.forEach(d => {
-            const u = d.data();
-            corpo.innerHTML += `<tr><td><strong>${u.identificador}</strong></td><td>${u.permissao === 'regional' ? 'Regional' : 'Unidade'}</td><td><span class="badge-kpi good">Ativo</span></td></tr>`;
-        });
+        corpo.innerHTML = '<tr><td colspan="3" class="text-center">Lendo...</td></tr>';
+        
+        try {
+            const res = await fetch(API_URL + "?action=usuarios");
+            const usuarios = await res.json();
+            corpo.innerHTML = '';
+            
+            if(usuarios.length === 0) {
+                 corpo.innerHTML = '<tr><td colspan="3" class="text-center">Nenhum usuário cadastrado.</td></tr>';
+                 return;
+            }
+
+            usuarios.forEach(u => {
+                corpo.innerHTML += `<tr><td><strong>${u.identificador}</strong></td><td>${u.permissao === 'regional' ? 'Regional' : 'Unidade'}</td><td><span class="badge-kpi good">Ativo</span></td></tr>`;
+            });
+        } catch(e) {
+            corpo.innerHTML = '<tr><td colspan="3" class="text-center text-danger">Erro ao ler aba Usuarios.</td></tr>';
+        }
     };
 
     const form = document.getElementById('formUsuario');
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const ident = document.getElementById('emailNovoUser').value.trim().toLowerCase();
+        const novoIdent = document.getElementById('emailNovoUser').value.trim().toLowerCase();
         const nivel = document.getElementById('nivelAcesso').value;
         const btn = document.getElementById('btnCriarUser');
         btn.innerText = "Autorizando...";
+        
         try {
-            const appAux = getApps().find(a => a.name === "Aux") || initializeApp(firebaseConfig, "Aux");
-            await createUserWithEmailAndPassword(getAuth(appAux), ident + DOMINIO, SENHA_SISTEMA);
-            await signOut(getAuth(appAux));
+            const registroUser = {
+                tipo: "usuario",
+                identificador: novoIdent,
+                permissao: nivel
+            };
             
-            await addDoc(collection(db, "perfil_usuarios"), { identificador: ident, permissao: nivel, criadoEm: serverTimestamp() });
+            await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify(registroUser)
+            });
             
             document.getElementById('msgSucessoUser').classList.remove('hidden');
             form.reset();
-            listar();
+            listar(); 
             setTimeout(() => document.getElementById('msgSucessoUser').classList.add('hidden'), 3000);
-        } catch (err) { alert("Erro ao criar."); }
-        finally { btn.innerText = "Autorizar"; }
+        } catch (err) { 
+            alert("Erro ao enviar dados."); 
+        } finally { 
+            btn.innerText = "Autorizar"; 
+        }
     });
+    
     listar();
 }

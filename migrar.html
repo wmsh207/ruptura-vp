@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Migração Firebase > Sheets | RupturaTracker</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <style>
+        .migracao-box { background: white; padding: 30px; border-radius: 16px; margin-top: 20px; border: 1px solid var(--border-color); }
+        textarea { width: 100%; height: 300px; padding: 15px; border-radius: 8px; border: 1px solid #ccc; font-family: monospace; resize: vertical; white-space: pre; overflow-wrap: normal; overflow-x: scroll;}
+    </style>
+</head>
+<body>
+    <main class="dashboard-container">
+        <h2 class="view-title"><span class="material-icons-round">cloud_download</span> Extração de Dados do Firebase</h2>
+        
+        <div class="migracao-box">
+            <p style="margin-bottom: 20px; color: var(--text-muted);">
+                1. Digite a senha do Regional para autorizar a leitura do banco de dados antigo.<br>
+                2. Clique em Extrair. O sistema vai puxar todo o histórico.<br>
+                3. Copie todo o texto da caixa preta e cole na aba <strong>Base</strong> da sua planilha do Google (clique na célula A2 e cole).
+            </p>
+
+            <div class="form-row" style="margin-bottom: 20px;">
+                <input type="text" id="emailMigracao" value="regional" placeholder="Usuário" disabled class="filtro-input">
+                <button id="btnExtrair" class="btn-primary" style="justify-content: center;">Extrair Dados</button>
+            </div>
+
+            <textarea id="dadosExtraidos" placeholder="Os dados aparecerão aqui prontos para copiar e colar no Google Sheets..." readonly style="background: #1e293b; color: #4ade80;"></textarea>
+            
+            <p id="statusExtra" style="margin-top: 10px; font-weight: bold;"></p>
+        </div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // ⚠️ COLOQUE SUA API_KEY DO FIREBASE AQUI
+        const firebaseConfig = {
+            
+apiKey: "AIzaSyA_i9BkvMFIXxTTtJA6dyFc2HLXKP-TmHU",
+  authDomain: "wms-h7.firebaseapp.com",
+  projectId: "wms-h7",
+  storageBucket: "wms-h7.firebasestorage.app",
+  messagingSenderId: "274655939351",
+  appId: "1:274655939351:web:806d2b96064d67b16b8552"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        document.getElementById('btnExtrair').addEventListener('click', async () => {
+            const btn = document.getElementById('btnExtrair');
+            const txtBox = document.getElementById('dadosExtraidos');
+            const status = document.getElementById('statusExtra');
+            
+            btn.disabled = true;
+            btn.innerText = "Conectando e Lendo...";
+            txtBox.value = "Aguarde... Baixando dados do Firebase...\n";
+
+            try {
+                // Autentica para ter permissão de ler o Firebase
+                await signInWithEmailAndPassword(auth, "regional@rupturatracker.com", "Pinda@2026Operacional");
+                
+                // Busca todas as auditorias
+                const snap = await getDocs(collection(db, "auditorias_ruptura"));
+                
+                let count = 0;
+                let linhasTSV = "";
+
+                snap.forEach(doc => {
+                    const v = doc.data();
+                    // Monta a linha separada por TAB (\t) exatamente na ordem da planilha
+                    const linha = `${v.data || ''}\t${v.filial || ''}\t${v.departamento || ''}\t${v.secao || ''}\t${v.qtdRuptura || 0}\t${v.qtdLoja || 0}\t${v.qtdDeposito || 0}\t${v.qtdSujeira || 0}\t${v.indicadorLogistico || 0}\t${v.registradoPor || ''}`;
+                    linhasTSV += linha + "\n";
+                    count++;
+                });
+
+                txtBox.value = linhasTSV;
+                status.innerText = `Sucesso! ${count} registros extraídos. Copie o texto acima e cole no Sheets.`;
+                status.style.color = "var(--success)";
+                
+            } catch (error) {
+                txtBox.value = "ERRO: " + error.message;
+                status.innerText = "Falha na extração.";
+                status.style.color = "red";
+            } finally {
+                btn.innerText = "Extração Concluída";
+            }
+        });
+    </script>
+</body>
+</html>
