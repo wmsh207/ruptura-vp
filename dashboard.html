@@ -27,10 +27,17 @@
         </div>
 
         <div class="action-card" style="margin-bottom: 20px; padding: 20px;">
-            <div class="form-row">
+            <div class="form-row" style="grid-template-columns: 1fr 1fr 2fr;">
                 <div class="form-group">
-                    <label>Período</label>
-                    <input type="month" id="dashMes" class="filtro-input">
+                    <label>Visão de Período</label>
+                    <select id="dashTipoPeriodo" class="filtro-input">
+                        <option value="mes">Mês Inteiro</option>
+                        <option value="dia">Dia Específico</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label id="labelData">Selecione o Mês</label>
+                    <input type="month" id="dashData" class="filtro-input">
                 </div>
                 <div class="form-group" id="containerDashFilial">
                     <label>Unidade / Filial</label>
@@ -108,10 +115,12 @@
                 </table>
             </div>
         </div>
+
+        <footer class="footer-discreto">
+        <p>Dúvidas ou Suporte Técnico: José Daniel | Filial 207 - Contato: (12) 99600-1446</p>
+        </footer>
     </main>
-    <footer class="footer-discreto">
-    <p>Dúvidas ou Suporte Técnico: José Daniel | Filial 207 - Contato: (12) 99600-1446</p>
-    </footer>
+
     <script type="module" src="script.js"></script>
 </body>
 </html>

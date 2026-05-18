@@ -195,15 +195,36 @@ if (formRup) {
 // ==========================================
 // 5. DASHBOARD EXECUTIVO
 // ==========================================
+// ==========================================
+// 5. DASHBOARD EXECUTIVO
+// ==========================================
 async function carregarDashboard(ident) {
     const isReg = ident === 'regional';
     const lojaBase = ident.toUpperCase().replace('H', 'H-');
     
-    const mesInput = document.getElementById('dashMes');
+    // Captura os novos campos
+    const tipoPeriodo = document.getElementById('dashTipoPeriodo');
+    const dataInput = document.getElementById('dashData');
+    const labelData = document.getElementById('labelData');
     const filialInput = document.getElementById('dashFilial');
     const containerFilial = document.getElementById('containerDashFilial');
     
-    mesInput.value = new Date().toISOString().slice(0, 7);
+    // Define Mês por padrão ao abrir a tela
+    dataInput.value = new Date().toISOString().slice(0, 7);
+
+    // Lógica para trocar a caixinha entre "Mês" e "Dia"
+    tipoPeriodo.addEventListener('change', (e) => {
+        if (e.target.value === 'dia') {
+            dataInput.type = 'date';
+            labelData.innerText = 'Selecione o Dia';
+            dataInput.value = new Date().toISOString().slice(0, 10); // Seta dia de hoje
+        } else {
+            dataInput.type = 'month';
+            labelData.innerText = 'Selecione o Mês';
+            dataInput.value = new Date().toISOString().slice(0, 7); // Seta mês atual
+        }
+        processarDados(); // Recalcula os gráficos na hora
+    });
 
     if (isReg) {
         try {
@@ -218,7 +239,7 @@ async function carregarDashboard(ident) {
             lojasCadastradas.sort().forEach(lojaID => {
                 filialInput.innerHTML += `<option value="${lojaID}">${lojaID}</option>`;
             });
-        } catch (e) { console.error("Erro ao carregar lojas", e); }
+        } catch (e) { console.error("Erro ao carregar lojas da planilha", e); }
     } else {
         containerFilial.style.display = 'none';
         filialInput.value = lojaBase;
@@ -227,16 +248,17 @@ async function carregarDashboard(ident) {
     let cacheDadosBrutos = null; 
 
     async function processarDados() {
-        const m = mesInput.value;
+        // 'm' agora pode ser "2026-05" (Mês) ou "2026-05-18" (Dia)
+        const m = dataInput.value; 
         const f = isReg ? filialInput.value : lojaBase;
         
         if (!cacheDadosBrutos) {
-            document.getElementById('kpiOfensor').innerText = "Baixando dados...";
+            document.getElementById('kpiOfensor').innerText = "Baixando da planilha...";
             try {
                 const res = await fetch(API_URL);
                 cacheDadosBrutos = await res.json();
             } catch (error) {
-                console.error("Erro ao ler.");
+                console.error("Erro ao ler da planilha.");
                 return;
             }
         }
@@ -246,6 +268,8 @@ async function carregarDashboard(ident) {
         cacheDadosBrutos.forEach(v => {
             let dataLida = String(v.data).split("T")[0]; 
 
+            // O startsWith faz a mágica: Ele compara "2026-05" com "2026-05-18" (verdadeiro)
+            // Ou compara "2026-05-18" com "2026-05-18" (verdadeiro apenas pro dia exato)
             if ((!m || dataLida.startsWith(m)) && (!f || v.filial === f)) {
                 let qR = Number(v.qtdRuptura) || 0;
                 let qD = Number(v.qtdDeposito) || 0;
@@ -262,6 +286,7 @@ async function carregarDashboard(ident) {
                 stats.lojas[v.filial].r += qR;
                 stats.lojas[v.filial].d += qD;
 
+                // Para o gráfico de evolução, sempre agrupamos pelo DIA (Mesmo se estiver vendo o mês)
                 if (!stats.evolucao[dataLida]) stats.evolucao[dataLida] = { r: 0, d: 0 };
                 stats.evolucao[dataLida].r += qR;
                 stats.evolucao[dataLida].d += qD;
@@ -331,7 +356,8 @@ async function carregarDashboard(ident) {
         }
     }
 
-    mesInput.addEventListener('change', processarDados);
+    // Escutadores de eventos para recalcular quando os filtros mudam
+    dataInput.addEventListener('change', processarDados);
     filialInput.addEventListener('change', processarDados);
     processarDados(); 
 }
