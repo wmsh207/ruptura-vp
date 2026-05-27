@@ -239,7 +239,7 @@ async function carregarDashboard(ident) {
             lojasCadastradas.sort().forEach(lojaID => {
                 filialInput.innerHTML += `<option value="${lojaID}">${lojaID}</option>`;
             });
-        } catch (e) { console.error("Erro ao carregar lojas da planilha", e); }
+        } catch (e) { console.error("Erro ao carregar lojas", e); }
     } else {
         containerFilial.style.display = 'none';
         filialInput.value = lojaBase;
@@ -253,12 +253,12 @@ async function carregarDashboard(ident) {
         const f = isReg ? filialInput.value : lojaBase;
         
         if (!cacheDadosBrutos) {
-            document.getElementById('kpiOfensor').innerText = "Baixando da planilha...";
+            document.getElementById('kpiOfensor').innerText = "Baixando dados...";
             try {
                 const res = await fetch(API_URL);
                 cacheDadosBrutos = await res.json();
             } catch (error) {
-                console.error("Erro ao ler da planilha.");
+                console.error("Erro ao ler dados.");
                 return;
             }
         }
