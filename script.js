@@ -306,6 +306,13 @@ async function carregarDashboard(ident) {
         const piorLj = Object.keys(s.lojas).length > 0 ? Object.keys(s.lojas).reduce((a, b) => (s.lojas[a].d / s.lojas[a].r) > (s.lojas[b].d / s.lojas[b].r) ? a : b) : "---";
         document.getElementById('kpiPiorLoja').innerText = isReg && !filtroAtivo ? piorLj : (filtroAtivo || "---");
 
+        // NOVO CÁLCULO: Loja Destaque (Busca a Menor Ruptura)
+        const melhorLj = Object.keys(s.lojas).length > 0 ? Object.keys(s.lojas).reduce((a, b) => (s.lojas[a].d / s.lojas[a].r) < (s.lojas[b].d / s.lojas[b].r) ? a : b) : "---";
+        const elMelhorLoja = document.getElementById('kpiMelhorLoja');
+        if (elMelhorLoja) {
+            elMelhorLoja.innerText = isReg && !filtroAtivo ? melhorLj : (filtroAtivo || "---");
+        }
+
         const corpo = document.getElementById('tabelaDepto');
         corpo.innerHTML = '';
         Object.keys(s.deptos).sort().forEach(d => {
