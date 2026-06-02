@@ -632,6 +632,11 @@ async function carregarAuditoria701(ident) {
             if (resposta.json_data) {
                 dadosAgrupados = JSON.parse(resposta.json_data);
                 salvarProgressoLocal();
+                
+                // ESCONDE A TELA 1 E MOSTRA A TELA 2 APÓS BAIXAR
+                telaImportar.classList.remove('ativa');
+                telaTarefas.classList.add('ativa');
+                
                 renderizarListaTarefas();
                 mostrarModal("Sincronizado", "Tarefas baixadas com sucesso da prancheta virtual!", "sucesso");
             } else {

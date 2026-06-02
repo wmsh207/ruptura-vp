@@ -49,37 +49,40 @@
         </div>
 
         <div id="telaImportar" class="tela-app ativa action-card">
-            <h3 style="margin-bottom: 10px;"><span class="material-icons-round" style="vertical-align: middle;">assignment</span> Gerar Missões de Auditoria</h3>
+            <h3 style="margin-bottom: 10px;"><span class="material-icons-round" style="vertical-align: middle;">assignment</span> Gerar Missões</h3>
             <p style="margin-bottom: 15px; color: var(--text-muted); font-size: 0.9rem;">Copie e cole do Excel as colunas: <strong>Cód | Descrição | Departamento | Seção</strong>.</p>
-            <textarea id="dados701" style="width: 100%; height: 180px; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); font-family: monospace; font-size: 0.85rem;" placeholder="Ex:&#10;12345&#9;ARROZ TIO JOAO 5KG&#9;MERCEARIA&#9;ARROZ&#10;67890&#9;FEIJAO CARIOCA 1KG&#9;MERCEARIA&#9;FEIJAO"></textarea>
+            <textarea id="dados701" style="width: 100%; height: 180px; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); font-family: monospace; font-size: 0.85rem;" placeholder="Ex:&#10;12345&#9;ARROZ TIO JOAO 5KG&#9;MERCEARIA&#9;ARROZ"></textarea>
             <button id="btnGerarTarefas" class="btn-primary" style="width: 100%; margin-top: 15px; justify-content: center;">Criar Tarefas por Seção</button>
+
+            <div style="text-align: center; margin: 25px 0 15px 0; color: var(--text-muted); font-size: 0.85rem; font-weight: bold; position: relative;">
+                <hr style="position: absolute; width: 100%; top: 50%; z-index: 1; border: none; border-top: 1px solid var(--border-color);">
+                <span style="background: white; padding: 0 15px; position: relative; z-index: 2;">OU SE ALGUÉM JÁ GEROU HOJE</span>
+            </div>
+
+            <button id="btnBaixarNuvem" class="btn-primary" style="width: 100%; justify-content: center; font-size: 0.95rem; background: #0369a1;">
+                <span class="material-icons-round" style="font-size: 1.3rem;">cloud_download</span> Puxar da Nuvem
+            </button>
         </div>
 
         <div id="telaTarefas" class="tela-app">
             <div class="action-card" style="margin-bottom: 20px; text-align: center;">
                 <h3 id="resumoTarefas">0 Seções Encontradas</h3>
-                <p style="color: var(--text-muted); font-size: 0.9rem;">Escolha a seção e inicie a auditoria.</p>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">Escolha o corredor e inicie a contagem.</p>
                 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
-                    <button id="btnBaixarNuvem" class="btn-primary" style="justify-content: center; font-size: 0.8rem; background: #0369a1;">
-                        <span class="material-icons-round" style="font-size: 1.2rem;">cloud_download</span> Puxar Tarefas
-                    </button>
-                    <button id="btnSubirNuvem" class="btn-primary" style="justify-content: center; font-size: 0.8rem; background: #0ea5e9;">
-                        <span class="material-icons-round" style="font-size: 1.2rem;">cloud_upload</span> Salvar Progresso
-                    </button>
-                </div>
+                <button id="btnSubirNuvem" class="btn-primary" style="width: 100%; margin-top: 15px; justify-content: center; font-size: 0.85rem; background: #0ea5e9;">
+                    <span class="material-icons-round" style="font-size: 1.2rem;">cloud_upload</span> Sincronizar Progresso na Nuvem
+                </button>
             </div>
             
             <div id="listaSecoes"></div>
             
             <button id="btnImportarMais" style="width: 100%; margin-top: 10px; margin-bottom: 20px; background: transparent; border: 2px dashed var(--primary); color: var(--primary); padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; transition: 0.2s;">
-                <span class="material-icons-round">add_to_photos</span> Importar Mais Itens
+                <span class="material-icons-round">add_to_photos</span> Importar / Puxar Mais Itens
             </button>
             
             <button id="btnFinalizar701" class="btn-primary hidden" style="width: 100%; margin-top: 10px; justify-content: center; background: #10b981;">
-                <span class="material-icons-round">task_alt</span> Encerrar Auditoria Final
+                <span class="material-icons-round">done_all</span> Encerrar Sessão
             </button>
-            <div id="msgSucesso701" class="hidden alert-success" style="text-align: center; margin-top: 15px;">Enviado para o painel gerencial!</div>
         </div>
 
         <div id="telaItens" class="tela-app">
