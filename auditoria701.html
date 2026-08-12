@@ -24,8 +24,11 @@
         <!-- TELA 1: IMPORTAÇÃO -->
         <div id="telaImportar" class="tela-app ativa action-card">
             <h3 style="margin-bottom: 10px;"><span class="material-icons-round" style="vertical-align: middle;">assignment</span> Gerar Missões</h3>
-            <p style="margin-bottom: 15px; color: var(--text-muted); font-size: 0.9rem;">Copie e cole do Excel as colunas: <strong>Cód | Descrição | Departamento | Seção</strong>.</p>
-            <textarea id="dados701" style="width: 100%; height: 180px; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); font-family: monospace; font-size: 0.85rem;" placeholder="Ex:&#10;12345&#9;ARROZ TIO JOAO 5KG&#9;MERCEARIA&#9;ARROZ"></textarea>
+            <p style="margin-bottom: 15px; color: var(--text-muted); font-size: 0.9rem;">
+                Copie e cole do Excel as colunas:<br>
+                <strong>Cód | Descrição | Departamento | Seção | Estoque | Últ. Entrada | Venda Pós Compra?</strong>
+            </p>.</p>
+            <textarea id="dados701" style="width: 100%; height: 180px; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); font-family: monospace; font-size: 0.85rem;" placeholder="Ex:&#10;12345&#9;ARROZ TIO JOAO 5KG&#9;MERCEARIA&#9;ARROZ&#9;15&#9;10/05/2026&#9;SIM"></textarea>
             <button id="btnGerarTarefas" class="btn-primary" style="width: 100%; margin-top: 15px; justify-content: center;">Criar Tarefas por Seção</button>
 
             <div style="text-align: center; margin: 25px 0 15px 0; color: var(--text-muted); font-size: 0.85rem; font-weight: bold; position: relative;">

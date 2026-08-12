@@ -675,6 +675,10 @@ async function carregarAuditoria701(ident) {
                 const desc = colunas[1].trim();
                 const depto = colunas[2].trim().toUpperCase();
                 const secao = colunas[3].trim().toUpperCase();
+
+                const estoque = colunas[4] ? colunas[4].trim() : '-';
+                const ultEntrada = colunas[5] ? colunas[5].trim() : '-';
+                const vendaPos = colunas[6] ? colunas[6].trim() : '-';
                 
                 const chaveAgrupamento = `${depto}|${secao}`;
 
@@ -684,7 +688,14 @@ async function carregarAuditoria701(ident) {
                 
                 const produtoJaExiste = dadosAgrupados[chaveAgrupamento].itens.some(i => i.cod === cod);
                 if (!produtoJaExiste) {
-                    dadosAgrupados[chaveAgrupamento].itens.push({ cod: cod, desc: desc, resposta: null });
+                    dadosAgrupados[chaveAgrupamento].itens.push({ 
+                        cod: cod, 
+                        desc: desc, 
+                        estoque: estoque,
+                        ultEntrada: ultEntrada,
+                        vendaPos: vendaPos,
+                        resposta: null 
+                    });
                 }
             }
         });
@@ -788,7 +799,15 @@ async function carregarAuditoria701(ident) {
                     <div class="item-header">
                         <div class="item-cod">CÓD: ${item.cod}</div>
                         <div class="item-desc">${item.desc}</div>
+                        
+                        <!-- NOVO: Etiqueta de apoio com as infos do ERP -->
+                        <div style="display: flex; justify-content: space-between; gap: 5px; margin-top: 10px; font-size: 0.75rem; color: #64748b; background: #f8fafc; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                            <div><strong>Estoque:</strong><br>${item.estoque || '-'}</div>
+                            <div><strong>Últ. Entrada:</strong><br>${item.ultEntrada || '-'}</div>
+                            <div><strong>Venda Pós:</strong><br>${item.vendaPos || '-'}</div>
+                        </div>
                     </div>
+                    
                     <div class="btn-group-audit">
                         <button class="btn-opt opt-loja ${item.resposta === 'loja' ? 'selecionado' : ''}" onclick="marcarResposta('${chave}', ${index}, 'loja')">
                             <span class="material-icons-round">check_circle</span> Na Loja
@@ -893,7 +912,14 @@ async function carregarAuditoria701(ident) {
                 const grupo = dadosAgrupados[chave];
                 grupo.itens.forEach(item => {
                     if (item.resposta === 'deposito') {
-                        itensDeposito.push({ secao: grupo.secao, cod: item.cod, desc: item.desc });
+                        itensDeposito.push({ 
+                            secao: grupo.secao, 
+                            cod: item.cod, 
+                            desc: item.desc,
+                            estoque: item.estoque,
+                            ultEntrada: item.ultEntrada,
+                            vendaPos: item.vendaPos
+                        });
                     }
                 });
             });
@@ -913,12 +939,17 @@ async function carregarAuditoria701(ident) {
                         body { font-family: 'Courier New', Courier, monospace; width: 78mm; padding: 10px; margin: 0; color: #000; background: #fff; }
                         .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
                         .header h2 { margin: 0; font-size: 18px; font-weight: 900; }
-                        .header p { margin: 5px 0 0 0; font-size: 13px; font-weight: bold; }
-                        .item { border-bottom: 1px dashed #999; padding: 12px 0; overflow: hidden; }
-                        .secao { font-size: 12px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; border: 1px solid #000; display: inline-block; padding: 2px 5px;}
-                        .check-box { float: right; width: 25px; height: 25px; border: 2px solid #000; border-radius: 4px; }
-                        .cod { font-size: 22px; font-weight: 900; margin: 0; letter-spacing: 1px; }
-                        .desc { font-size: 15px; margin: 6px 0 0 0; font-weight: bold; }
+                        .header p { margin: 5px 0 0 0; font-size: 14px; font-weight: bold; }
+                        .item { border-bottom: 2px dashed #000; padding: 15px 0; overflow: hidden; }
+                        .secao { font-size: 14px; font-weight: 900; text-transform: uppercase; margin-bottom: 8px; border: 2px solid #000; display: inline-block; padding: 4px 8px;}
+                        .check-box { float: right; width: 28px; height: 28px; border: 2px solid #000; border-radius: 4px; }
+                        .cod { font-size: 24px; font-weight: 900; margin: 0; letter-spacing: 1px; }
+                        .desc { font-size: 16px; margin: 8px 0 0 0; font-weight: 900; line-height: 1.2; }
+                        
+                        /* ATUALIZADO: Fonte maior, maiúscula e negrito forte para a impressora térmica */
+                        .infos { display: flex; justify-content: space-between; margin-top: 12px; font-size: 13px; font-weight: 900; padding-top: 8px; border-top: 2px solid #000; color: #000; text-transform: uppercase; }
+                        .infos div { text-align: center; line-height: 1.4; }
+                        .infos span { font-size: 16px; display: block; }
                     </style>
                 </head>
                 <body>
@@ -937,12 +968,17 @@ async function carregarAuditoria701(ident) {
                         <div class="secao">${i.secao}</div>
                         <p class="cod">${i.cod}</p>
                         <p class="desc">${i.desc}</p>
+                        <div class="infos">
+                            <div>ESTQ<br><span>${i.estoque || '-'}</span></div>
+                            <div>ÚLT. ENT.<br><span>${i.ultEntrada || '-'}</span></div>
+                            <div>VENDA<br><span>${i.vendaPos || '-'}</span></div>
+                        </div>
                     </div>
                 `;
             });
 
             htmlStr += `
-                    <div style="text-align: center; margin-top: 30px; font-size: 14px; font-weight: bold;">
+                    <div style="text-align: center; margin-top: 30px; font-size: 16px; font-weight: 900;">
                         <p>_______________________</p>
                         <p>Visto Repositor</p>
                     </div>
