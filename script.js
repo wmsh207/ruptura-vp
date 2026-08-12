@@ -3,10 +3,9 @@
 // =========================================================================
 
 // ⚠️ COLE AQUI A URL DO SEU APP DA WEB DO GOOGLE SHEETS ⚠️
-const API_URL = "https://script.google.com/macros/s/AKfycbwKhNBDsJ8PcTi43mqqFLneRX1yvvjKKiORs2vY89k9ulJSTUDfegF3bFEigHhQddjunQ/exec"; 
+const API_URL = "COLE_SUA_URL_DO_GOOGLE_AQUI"; 
 
 const paginaAtual = window.location.pathname;
-
 let chartEvoInstance = null;
 let chartLojaInstance = null;
 
@@ -56,7 +55,7 @@ function configurarInterface(ident) {
 }
 
 // ==========================================
-// 3. LOGIN E LOGOUT (VIA PLANILHA)
+// 3. LOGIN E LOGOUT
 // ==========================================
 const formLogin = document.getElementById('formLogin');
 if (formLogin) {
@@ -64,7 +63,7 @@ if (formLogin) {
         e.preventDefault();
         const ident = document.getElementById('emailInput').value.trim().toLowerCase();
         const btn = document.getElementById('btnEntrar');
-        btn.innerText = "Verificando permissão...";
+        btn.innerText = "Verificando...";
         
         try {
             const res = await fetch(API_URL + "?action=usuarios");
@@ -132,7 +131,7 @@ async function carregarOpcoesInclusao(ident) {
                 selectSecao.style.backgroundColor = '#e2e8f0'; 
             }
         });
-    } catch (err) { console.error("Erro no JSON", err); }
+    } catch (err) {}
 
     const formRup = document.getElementById('formRuptura');
     if (formRup) {
@@ -228,7 +227,7 @@ async function carregarDashboard(ident) {
             lojasCadastradas.sort().forEach(lojaID => {
                 filialInput.innerHTML += `<option value="${lojaID}">${lojaID}</option>`;
             });
-        } catch (e) { console.error("Erro ao carregar lojas"); }
+        } catch (e) {}
     } else {
         containerFilial.style.display = 'none';
         filialInput.value = lojaBase;
@@ -256,9 +255,7 @@ async function carregarDashboard(ident) {
             if ((!m || dataLida.startsWith(m)) && (!f || v.filial === f)) {
                 let qR = Number(v.qtdRuptura) || 0;
                 let qD = Number(v.qtdDeposito) || 0;
-                let qL = Number(v.qtdLoja) || 0;
-                
-                let totalItens = Number(v.totalAuditado) || (qR + qL);
+                let totalItens = Number(v.totalAuditado) || (qR + (Number(v.qtdLoja) || 0));
 
                 stats.tr += qR;
                 stats.td += qD;
@@ -306,12 +303,11 @@ async function carregarDashboard(ident) {
             const r = s.deptos[d].r;
             const dep = s.deptos[d].d;
             
-            // O cálculo da porcentagem permanece o mesmo (Depósito sobre os Furos totais)
+            // CORREÇÃO: Tabela gerando apenas as 5 colunas do cabeçalho
             const ef = r > 0 ? (dep / r * 100).toFixed(2) : 0;
             const status = ef <= 5 ? 'good' : 'danger';
             const textoStatus = ef <= 5 ? 'OK' : 'Crítico';
             
-            // Agora a tabela gera exatamente as 5 informações
             corpo.innerHTML += `<tr>
                 <td><strong>${d}</strong></td>
                 <td>${total}</td>
@@ -393,7 +389,7 @@ async function carregarHistorico(ident) {
             lojasCadastradas.sort().forEach(lojaID => {
                 filialInput.innerHTML += `<option value="${lojaID}">${lojaID}</option>`;
             });
-        } catch (e) { console.error("Erro ao carregar lojas"); }
+        } catch (e) {}
     }
     
     const mesInput = document.getElementById('filtroMes');
@@ -526,7 +522,7 @@ async function carregarGerenciamentoUsuarios(ident) {
             const nivel = document.getElementById('nivelAcesso').value;
             const btn = document.getElementById('btnCriarUser');
             btn.innerText = "Salvando...";
-            
+
             try {
                 const registroUser = { tipo: "usuario", identificador: novoIdent, permissao: nivel };
                 await fetch(API_URL, { method: 'POST', body: JSON.stringify(registroUser) });
@@ -633,7 +629,6 @@ async function carregarAuditoria701(ident) {
                 dadosAgrupados = JSON.parse(resposta.json_data);
                 salvarProgressoLocal();
                 
-                // ESCONDE A TELA 1 E MOSTRA A TELA 2 APÓS BAIXAR
                 telaImportar.classList.remove('ativa');
                 telaTarefas.classList.add('ativa');
                 
@@ -717,6 +712,7 @@ async function carregarAuditoria701(ident) {
         const lista = document.getElementById('listaSecoes');
         lista.innerHTML = '';
         let todasEnviadas = true;
+        let temDeposito = false;
 
         Object.keys(dadosAgrupados).forEach(chave => {
             const grupo = dadosAgrupados[chave];
@@ -727,6 +723,10 @@ async function carregarAuditoria701(ident) {
             if(typeof grupo.enviado === 'undefined') grupo.enviado = false;
             if (!grupo.enviado) todasEnviadas = false;
             
+            if (grupo.itens.some(i => i.resposta === 'deposito')) {
+                temDeposito = true;
+            }
+            
             grupo.finalizada = isConcluido;
 
             let actionHtml = '';
@@ -735,7 +735,7 @@ async function carregarAuditoria701(ident) {
             } else if (isConcluido) {
                 actionHtml = `
                     <div style="display: flex; gap: 8px;">
-                        <button class="btn-primary" onclick="abrirSecao('${chave}')" style="padding: 8px; background: #64748b;" title="Revisar e Alterar">
+                        <button class="btn-primary" onclick="abrirSecao('${chave}')" style="padding: 8px; background: #64748b;" title="Revisar">
                             <span class="material-icons-round" style="font-size: 1.2rem;">visibility</span>
                         </button>
                         <button class="btn-primary" id="btnEnv_${chave}" onclick="enviarSecao('${chave}')" style="padding: 8px 15px; background: #10b981;">
@@ -765,6 +765,13 @@ async function carregarAuditoria701(ident) {
             btnSalvar.innerHTML = `<span class="material-icons-round">done_all</span> Encerrar Sessão`;
         } else {
             btnSalvar.classList.add('hidden');
+        }
+
+        const btnImprimir = document.getElementById('btnImprimirDeposito');
+        if (temDeposito) {
+            btnImprimir.classList.remove('hidden');
+        } else {
+            btnImprimir.classList.add('hidden');
         }
     }
 
@@ -832,7 +839,7 @@ async function carregarAuditoria701(ident) {
         });
 
         const totalAuditado = grupo.itens.length;
-        const qtdRuptura = totalAuditado;
+        const qtdRuptura = qtdDeposito + qtdSujeira; 
         const perc = qtdRuptura > 0 ? parseFloat(((qtdDeposito / qtdRuptura) * 100).toFixed(2)) : 0;
 
         const registro = {
@@ -847,6 +854,7 @@ async function carregarAuditoria701(ident) {
             qtdSujeira: qtdSujeira,
             indicadorLogistico: perc,
             registradoPor: "App701 - " + ident,
+            totalAuditado: totalAuditado
         };
 
         try {
@@ -875,4 +883,78 @@ async function carregarAuditoria701(ident) {
 
         window.location.href = 'home.html';
     });
+
+    const btnImprimir = document.getElementById('btnImprimirDeposito');
+    if (btnImprimir) {
+        btnImprimir.addEventListener('click', () => {
+            let itensDeposito = [];
+
+            Object.keys(dadosAgrupados).forEach(chave => {
+                const grupo = dadosAgrupados[chave];
+                grupo.itens.forEach(item => {
+                    if (item.resposta === 'deposito') {
+                        itensDeposito.push({ secao: grupo.secao, cod: item.cod, desc: item.desc });
+                    }
+                });
+            });
+
+            if (itensDeposito.length === 0) return;
+
+            const printWindow = window.open('', '_blank', 'width=400,height=600');
+            
+            let htmlStr = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Lista de Busca - Depósito</title>
+                    <style>
+                        @page { margin: 0; }
+                        body { font-family: 'Courier New', Courier, monospace; width: 78mm; padding: 10px; margin: 0; color: #000; background: #fff; }
+                        .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
+                        .header h2 { margin: 0; font-size: 18px; font-weight: 900; }
+                        .header p { margin: 5px 0 0 0; font-size: 13px; font-weight: bold; }
+                        .item { border-bottom: 1px dashed #999; padding: 12px 0; overflow: hidden; }
+                        .secao { font-size: 12px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; border: 1px solid #000; display: inline-block; padding: 2px 5px;}
+                        .check-box { float: right; width: 25px; height: 25px; border: 2px solid #000; border-radius: 4px; }
+                        .cod { font-size: 22px; font-weight: 900; margin: 0; letter-spacing: 1px; }
+                        .desc { font-size: 15px; margin: 6px 0 0 0; font-weight: bold; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h2>BUSCA NO DEPÓSITO</h2>
+                        <p>Data: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}</p>
+                        <p>Filial: ${filialCalculada}</p>
+                        <p>Itens para Separar: ${itensDeposito.length}</p>
+                    </div>
+            `;
+
+            itensDeposito.forEach(i => {
+                htmlStr += `
+                    <div class="item">
+                        <div class="check-box"></div>
+                        <div class="secao">${i.secao}</div>
+                        <p class="cod">${i.cod}</p>
+                        <p class="desc">${i.desc}</p>
+                    </div>
+                `;
+            });
+
+            htmlStr += `
+                    <div style="text-align: center; margin-top: 30px; font-size: 14px; font-weight: bold;">
+                        <p>_______________________</p>
+                        <p>Visto Repositor</p>
+                    </div>
+                    <script>
+                        window.onload = function() { window.print(); setTimeout(() => { window.close(); }, 500); }
+                    <\/script>
+                </body>
+                </html>
+            `;
+
+            printWindow.document.write(htmlStr);
+            printWindow.document.close();
+        });
+    }
 }
