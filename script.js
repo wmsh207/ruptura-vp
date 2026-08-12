@@ -3,7 +3,7 @@
 // =========================================================================
 
 // ⚠️ COLE AQUI A URL DO SEU APP DA WEB DO GOOGLE SHEETS ⚠️
-const API_URL = "COLE_SUA_URL_DO_GOOGLE_AQUI"; 
+const API_URL = "https://script.google.com/macros/s/AKfycbwKhNBDsJ8PcTi43mqqFLneRX1yvvjKKiORs2vY89k9ulJSTUDfegF3bFEigHhQddjunQ/exec"; 
 
 const paginaAtual = window.location.pathname;
 let chartEvoInstance = null;
