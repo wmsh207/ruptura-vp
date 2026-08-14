@@ -5,6 +5,17 @@
 // ⚠️ COLE AQUI A URL DO SEU APP DA WEB DO GOOGLE SHEETS ⚠️
 const API_URL = "https://script.google.com/macros/s/AKfycbwKhNBDsJ8PcTi43mqqFLneRX1yvvjKKiORs2vY89k9ulJSTUDfegF3bFEigHhQddjunQ/exec"; 
 
+// ==========================================
+// MOTOR PWA (APP NATIVO)
+// ==========================================
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('PWA: Motor de aplicativo nativo ativado!', reg.scope))
+            .catch(err => console.error('PWA: Falha ao ativar o motor.', err));
+    });
+}
+
 const paginaAtual = window.location.pathname;
 let chartEvoInstance = null;
 let chartLojaInstance = null;
@@ -255,7 +266,8 @@ async function carregarDashboard(ident) {
             if ((!m || dataLida.startsWith(m)) && (!f || v.filial === f)) {
                 let qR = Number(v.qtdRuptura) || 0;
                 let qD = Number(v.qtdDeposito) || 0;
-                let totalItens = Number(v.totalAuditado) || (qR + (Number(v.qtdLoja) || 0));
+                let qL = Number(v.qtdLoja) || 0;
+                let totalItens = Number(v.totalAuditado) || (qR + qL);
 
                 stats.tr += qR;
                 stats.td += qD;
@@ -303,7 +315,6 @@ async function carregarDashboard(ident) {
             const r = s.deptos[d].r;
             const dep = s.deptos[d].d;
             
-            // CORREÇÃO: Tabela gerando apenas as 5 colunas do cabeçalho
             const ef = r > 0 ? (dep / r * 100).toFixed(2) : 0;
             const status = ef <= 5 ? 'good' : 'danger';
             const textoStatus = ef <= 5 ? 'OK' : 'Crítico';
@@ -543,7 +554,7 @@ async function carregarGerenciamentoUsuarios(ident) {
 }
 
 // ==========================================
-// 8. AUDITORIA 701 - MOBILE (100% NUVEM E MODAL)
+// 8. AUDITORIA 701 - MOBILE (NUVEM, EAN E CUPOM TÉRMICO)
 // ==========================================
 async function carregarAuditoria701(ident) {
     if (!paginaAtual.includes('auditoria701.html')) return;
@@ -554,6 +565,12 @@ async function carregarAuditoria701(ident) {
     const telaImportar = document.getElementById('telaImportar');
     const telaTarefas = document.getElementById('telaTarefas');
     const telaItens = document.getElementById('telaItens');
+
+    function getDataLocalBR() { return new Date().toLocaleDateString('pt-BR'); }
+    function getDataBancoDeDados() {
+        const d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
 
     function mostrarModal(titulo, mensagem, tipo = 'info') {
         const overlay = document.getElementById('customModal');
@@ -568,31 +585,32 @@ async function carregarAuditoria701(ident) {
         elMensagem.innerText = mensagem;
 
         if (tipo === 'sucesso') {
-            elIcone.innerText = 'check_circle';
-            elIconBg.style.backgroundColor = '#d1fae5';
-            elIconBg.style.color = '#059669';
+            elIcone.innerText = 'check_circle'; elIconBg.style.backgroundColor = '#d1fae5'; elIconBg.style.color = '#059669';
         } else if (tipo === 'erro') {
-            elIcone.innerText = 'error';
-            elIconBg.style.backgroundColor = '#fee2e2';
-            elIconBg.style.color = '#dc2626';
+            elIcone.innerText = 'error'; elIconBg.style.backgroundColor = '#fee2e2'; elIconBg.style.color = '#dc2626';
         } else {
-            elIcone.innerText = 'info';
-            elIconBg.style.backgroundColor = 'var(--primary-light)';
-            elIconBg.style.color = 'var(--primary)';
+            elIcone.innerText = 'info'; elIconBg.style.backgroundColor = 'var(--primary-light)'; elIconBg.style.color = 'var(--primary)';
         }
-
         overlay.classList.add('show');
     }
 
     const btnFecharModal = document.getElementById('btnFecharModal');
-    if(btnFecharModal) {
-        btnFecharModal.addEventListener('click', () => {
-            document.getElementById('customModal').classList.remove('show');
-        });
-    }
+    if(btnFecharModal) btnFecharModal.addEventListener('click', () => { document.getElementById('customModal').classList.remove('show'); });
+
+    document.addEventListener("visibilitychange", () => {
+        if (!document.hidden && paginaAtual.includes('auditoria701.html')) {
+            const dataHoje = getDataLocalBR();
+            const dataSalva = localStorage.getItem('audit701_data');
+            if (dataSalva && dataSalva !== dataHoje) {
+                localStorage.removeItem('audit701_data');
+                localStorage.removeItem('audit701_cache_' + ident);
+                window.location.reload(); 
+            }
+        }
+    });
 
     function gerenciarCache() {
-        const dataHoje = new Date().toISOString().slice(0, 10); 
+        const dataHoje = getDataLocalBR(); 
         const dataSalva = localStorage.getItem('audit701_data');
         const cacheSalvo = localStorage.getItem('audit701_cache_' + ident);
 
@@ -607,12 +625,12 @@ async function carregarAuditoria701(ident) {
         } else {
             localStorage.removeItem('audit701_data');
             localStorage.removeItem('audit701_cache_' + ident);
+            dadosAgrupados = {};
         }
     }
 
     function salvarProgressoLocal() {
-        const dataHoje = new Date().toISOString().slice(0, 10);
-        localStorage.setItem('audit701_data', dataHoje);
+        localStorage.setItem('audit701_data', getDataLocalBR());
         localStorage.setItem('audit701_cache_' + ident, JSON.stringify(dadosAgrupados));
     }
 
@@ -626,7 +644,15 @@ async function carregarAuditoria701(ident) {
             const resposta = await res.json();
             
             if (resposta.json_data) {
-                dadosAgrupados = JSON.parse(resposta.json_data);
+                const pacoteNuvem = JSON.parse(resposta.json_data);
+                
+                if (pacoteNuvem.data !== getDataLocalBR()) {
+                    mostrarModal("Nuvem Expirada", "As tarefas salvas na nuvem eram de ontem. Inicie um novo relatório.", "info");
+                    btn.innerHTML = textoAntigo;
+                    return;
+                }
+
+                dadosAgrupados = pacoteNuvem.payload || {};
                 salvarProgressoLocal();
                 
                 telaImportar.classList.remove('ativa');
@@ -647,13 +673,10 @@ async function carregarAuditoria701(ident) {
         btn.innerHTML = `<span class="material-icons-round">sync</span> Subindo...`;
         
         try {
+            const pacote = { data: getDataLocalBR(), payload: dadosAgrupados };
             await fetch(API_URL, {
                 method: 'POST',
-                body: JSON.stringify({
-                    tipo: "nuvem701",
-                    filial: filialCalculada,
-                    json_data: JSON.stringify(dadosAgrupados)
-                })
+                body: JSON.stringify({ tipo: "nuvem701", filial: filialCalculada, json_data: JSON.stringify(pacote) })
             });
             mostrarModal("Progresso Salvo", "Dados na nuvem atualizados! A equipe já pode puxar as novidades.", "sucesso");
         } catch (e) { mostrarModal("Erro no Envio", "Não foi possível enviar o progresso para a planilha.", "erro"); }
@@ -675,7 +698,7 @@ async function carregarAuditoria701(ident) {
                 const desc = colunas[1].trim();
                 const depto = colunas[2].trim().toUpperCase();
                 const secao = colunas[3].trim().toUpperCase();
-
+                
                 const estoque = colunas[4] ? colunas[4].trim() : '-';
                 const ultEntrada = colunas[5] ? colunas[5].trim() : '-';
                 const vendaPos = colunas[6] ? colunas[6].trim() : '-';
@@ -688,14 +711,7 @@ async function carregarAuditoria701(ident) {
                 
                 const produtoJaExiste = dadosAgrupados[chaveAgrupamento].itens.some(i => i.cod === cod);
                 if (!produtoJaExiste) {
-                    dadosAgrupados[chaveAgrupamento].itens.push({ 
-                        cod: cod, 
-                        desc: desc, 
-                        estoque: estoque,
-                        ultEntrada: ultEntrada,
-                        vendaPos: vendaPos,
-                        resposta: null 
-                    });
+                    dadosAgrupados[chaveAgrupamento].itens.push({ cod: cod, desc: desc, estoque: estoque, ultEntrada: ultEntrada, vendaPos: vendaPos, resposta: null });
                 }
             }
         });
@@ -734,9 +750,7 @@ async function carregarAuditoria701(ident) {
             if(typeof grupo.enviado === 'undefined') grupo.enviado = false;
             if (!grupo.enviado) todasEnviadas = false;
             
-            if (grupo.itens.some(i => i.resposta === 'deposito')) {
-                temDeposito = true;
-            }
+            if (grupo.itens.some(i => i.resposta === 'deposito')) temDeposito = true;
             
             grupo.finalizada = isConcluido;
 
@@ -779,10 +793,13 @@ async function carregarAuditoria701(ident) {
         }
 
         const btnImprimir = document.getElementById('btnImprimirDeposito');
+        const btnWhatsApp = document.getElementById('btnWhatsAppDeposito'); // Captura o botão novo
         if (temDeposito) {
             btnImprimir.classList.remove('hidden');
+            btnWhatsApp.classList.remove('hidden'); // Mostra se tiver depósito
         } else {
             btnImprimir.classList.add('hidden');
+            btnWhatsApp.classList.add('hidden'); // Esconde se não tiver depósito
         }
     }
 
@@ -797,17 +814,17 @@ async function carregarAuditoria701(ident) {
             lista.innerHTML += `
                 <div class="item-card">
                     <div class="item-header">
-                        <div class="item-cod">CÓD: ${item.cod}</div>
+                        <button class="btn-ver-foto" onclick="buscarImagemProduto('${item.cod}', '${item.desc}')">
+                            <span class="material-icons-round">image</span> Ver Foto
+                        </button>
+                        <div class="item-cod">EAN: ${item.cod}</div>
                         <div class="item-desc">${item.desc}</div>
-                        
-                        <!-- NOVO: Etiqueta de apoio com as infos do ERP -->
                         <div style="display: flex; justify-content: space-between; gap: 5px; margin-top: 10px; font-size: 0.75rem; color: #64748b; background: #f8fafc; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
                             <div><strong>Estoque:</strong><br>${item.estoque || '-'}</div>
                             <div><strong>Últ. Entrada:</strong><br>${item.ultEntrada || '-'}</div>
                             <div><strong>Venda Pós:</strong><br>${item.vendaPos || '-'}</div>
                         </div>
                     </div>
-                    
                     <div class="btn-group-audit">
                         <button class="btn-opt opt-loja ${item.resposta === 'loja' ? 'selecionado' : ''}" onclick="marcarResposta('${chave}', ${index}, 'loja')">
                             <span class="material-icons-round">check_circle</span> Na Loja
@@ -848,7 +865,6 @@ async function carregarAuditoria701(ident) {
         btn.innerHTML = `<span class="material-icons-round">sync</span>...`;
         btn.disabled = true;
 
-        const dataHoje = new Date().toISOString().slice(0, 10);
         let qtdLoja = 0, qtdDeposito = 0, qtdSujeira = 0;
         
         grupo.itens.forEach(i => {
@@ -863,7 +879,7 @@ async function carregarAuditoria701(ident) {
 
         const registro = {
             tipo: "auditoria",
-            data: dataHoje,
+            data: getDataBancoDeDados(),
             filial: filialCalculada,
             departamento: grupo.depto,
             secao: grupo.secao,
@@ -894,9 +910,10 @@ async function carregarAuditoria701(ident) {
         localStorage.removeItem('audit701_cache_' + ident);
 
         try {
+            const pacoteVazio = { data: 'LIXO', payload: {} };
             await fetch(API_URL, {
                 method: 'POST',
-                body: JSON.stringify({ tipo: "nuvem701", filial: filialCalculada, json_data: JSON.stringify({}) })
+                body: JSON.stringify({ tipo: "nuvem701", filial: filialCalculada, json_data: JSON.stringify(pacoteVazio) })
             });
         } catch (e) {}
 
@@ -912,14 +929,7 @@ async function carregarAuditoria701(ident) {
                 const grupo = dadosAgrupados[chave];
                 grupo.itens.forEach(item => {
                     if (item.resposta === 'deposito') {
-                        itensDeposito.push({ 
-                            secao: grupo.secao, 
-                            cod: item.cod, 
-                            desc: item.desc,
-                            estoque: item.estoque,
-                            ultEntrada: item.ultEntrada,
-                            vendaPos: item.vendaPos
-                        });
+                        itensDeposito.push({ secao: grupo.secao, cod: item.cod, desc: item.desc, estoque: item.estoque, ultEntrada: item.ultEntrada, vendaPos: item.vendaPos });
                     }
                 });
             });
@@ -945,8 +955,6 @@ async function carregarAuditoria701(ident) {
                         .check-box { float: right; width: 28px; height: 28px; border: 2px solid #000; border-radius: 4px; }
                         .cod { font-size: 24px; font-weight: 900; margin: 0; letter-spacing: 1px; }
                         .desc { font-size: 16px; margin: 8px 0 0 0; font-weight: 900; line-height: 1.2; }
-                        
-                        /* ATUALIZADO: Fonte maior, maiúscula e negrito forte para a impressora térmica */
                         .infos { display: flex; justify-content: space-between; margin-top: 12px; font-size: 13px; font-weight: 900; padding-top: 8px; border-top: 2px solid #000; color: #000; text-transform: uppercase; }
                         .infos div { text-align: center; line-height: 1.4; }
                         .infos span { font-size: 16px; display: block; }
@@ -966,7 +974,7 @@ async function carregarAuditoria701(ident) {
                     <div class="item">
                         <div class="check-box"></div>
                         <div class="secao">${i.secao}</div>
-                        <p class="cod">${i.cod}</p>
+                        <p class="cod">EAN: ${i.cod}</p>
                         <p class="desc">${i.desc}</p>
                         <div class="infos">
                             <div>ESTQ<br><span>${i.estoque || '-'}</span></div>
@@ -991,6 +999,118 @@ async function carregarAuditoria701(ident) {
 
             printWindow.document.write(htmlStr);
             printWindow.document.close();
+        });
+    }
+
+    // ===============================================
+    // COMPARTILHAR LISTA NO WHATSAPP
+    // ===============================================
+    const btnWhatsApp = document.getElementById('btnWhatsAppDeposito');
+    if (btnWhatsApp) {
+        btnWhatsApp.addEventListener('click', () => {
+            let textoWhatsApp = `🚨 *SOLICITAÇÃO DE REPOSIÇÃO* 🚨\n📍 Filial: *${filialCalculada}*\n📅 Data: *${getDataLocalBR()}*\n\n`;
+            let totalItens = 0;
+
+            // Varre as seções para agrupar os produtos de forma organizada
+            Object.keys(dadosAgrupados).forEach(chave => {
+                const grupo = dadosAgrupados[chave];
+                let temItemNessaSecao = false;
+                let textoSecao = `*🛒 SEÇÃO: ${grupo.secao}*\n`;
+                
+                grupo.itens.forEach(item => {
+                    if (item.resposta === 'deposito') {
+                        // Formata o item com código, descrição e estoque
+                        textoSecao += `📦 ${item.cod} - ${item.desc} (Estoque: ${item.estoque || '-'}) \n`;
+                        temItemNessaSecao = true;
+                        totalItens++;
+                    }
+                });
+                
+                if (temItemNessaSecao) {
+                    textoWhatsApp += textoSecao + '\n'; // Pula uma linha entre as seções
+                }
+            });
+
+            if (totalItens === 0) return;
+
+            // Codifica o texto para o formato que a internet entende (espaços viram %20, etc)
+            const textoCodificado = encodeURIComponent(textoWhatsApp);
+            
+            // Abre o link universal do WhatsApp
+            // No celular, isso abre direto o app perguntando pra quem mandar!
+            window.open(`https://api.whatsapp.com/send?text=${textoCodificado}`, '_blank');
+        });
+    }
+
+    // ===============================================
+    // VISUAL PICKING: MOTOR HÍBRIDO (ML + OPENFOODFACTS)
+    // ===============================================
+    window.buscarImagemProduto = async function(cod, desc) {
+        const modal = document.getElementById('modalImagemProduto');
+        const container = document.getElementById('containerFotoProduto');
+        const titulo = document.getElementById('tituloImagemModal');
+        const descricao = document.getElementById('descImagemModal');
+        const btnGoogle = document.getElementById('btnPesquisaGoogle');
+        
+        // Remove espaços invisíveis, letras ou formatações erradas do Excel. Deixa só os números!
+        const eanLimpo = String(cod).replace(/\D/g, '');
+
+        // 1. Prepara o Modal
+        titulo.innerText = `EAN: ${eanLimpo || cod}`;
+        descricao.innerText = desc;
+        container.innerHTML = '<div class="loading-spinner"></div>';
+        modal.classList.add('show');
+        
+        // 2. Prepara o botão do Google (Saída de Emergência)
+        btnGoogle.onclick = function() {
+            const pesquisa = encodeURIComponent(desc + " produto");
+            window.open(`https://www.google.com/search?tbm=isch&q=${pesquisa}`, '_blank');
+        };
+
+        try {
+            // TENTATIVA 1: Mercado Livre (Ótimo para Limpeza, Bazar e Bebidas)
+            try {
+                const resML = await fetch(`https://api.mercadolibre.com/sites/MLB/search?q=${eanLimpo}`);
+                if (resML.ok) {
+                    const dataML = await resML.json();
+                    if (dataML.results && dataML.results.length > 0) {
+                        let imgUrl = dataML.results[0].thumbnail.replace("http://", "https://").replace("I.jpg", "O.jpg");
+                        container.innerHTML = `<img src="${imgUrl}" alt="Foto do Produto">`;
+                        return; // Achou! Interrompe aqui.
+                    }
+                }
+            } catch (erroML) {
+                console.log("Bloqueio no ML, tentando próximo...");
+            }
+
+            // TENTATIVA 2: OpenFoodFacts (Ótimo para Mercearia e Alimentos)
+            try {
+                const resOFF = await fetch(`https://world.openfoodfacts.org/api/v0/product/${eanLimpo}.json`);
+                if (resOFF.ok) {
+                    const dataOFF = await resOFF.json();
+                    if (dataOFF.status === 1 && dataOFF.product && dataOFF.product.image_url) {
+                        container.innerHTML = `<img src="${dataOFF.product.image_url}" alt="Foto do Produto">`;
+                        return; // Achou! Interrompe aqui.
+                    }
+                }
+            } catch (erroOFF) {
+                console.log("Bloqueio no OFF...");
+            }
+
+            // SE CHEGOU AQUI: Os bancos responderam, mas o produto realmente não existe lá
+            container.innerHTML = `<div style="color: #64748b; font-size: 0.9rem; text-align: center;"><span class="material-icons-round" style="font-size: 2.5rem; display: block; margin-bottom: 5px; color: #cbd5e1;">image_not_supported</span>Foto não cadastrada nos bancos públicos.<br>Use o botão de busca abaixo.</div>`;
+
+        } catch (err) {
+            // Falha crítica de rede (se o celular estiver sem internet, por exemplo)
+            container.innerHTML = `<div style="color: #ef4444; font-size: 0.9rem; text-align: center;"><span class="material-icons-round" style="font-size: 2.5rem; display: block; margin-bottom: 5px; color: #fca5a5;">wifi_off</span>A rede bloqueou a consulta.<br>Use o botão de busca abaixo.</div>`;
+        }
+    };
+
+    // Fechar o Modal clicando no X
+    const btnFecharImg = document.getElementById('btnFecharModalImagem');
+    if (btnFecharImg) {
+        btnFecharImg.addEventListener('click', () => {
+            document.getElementById('modalImagemProduto').classList.remove('show');
         });
     }
 }
