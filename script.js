@@ -5,6 +5,10 @@
 // ⚠️ COLE AQUI A URL DO SEU APP DA WEB DO GOOGLE SHEETS ⚠️
 const API_URL = "https://script.google.com/macros/s/AKfycbwKhNBDsJ8PcTi43mqqFLneRX1yvvjKKiORs2vY89k9ulJSTUDfegF3bFEigHhQddjunQ/exec"; 
 
+const paginaAtual = window.location.pathname;
+let chartEvoInstance = null;
+let chartLojaInstance = null;
+
 // ==========================================
 // MOTOR PWA (APP NATIVO)
 // ==========================================
@@ -15,10 +19,6 @@ if ('serviceWorker' in navigator) {
             .catch(err => console.error('PWA: Falha ao ativar o motor.', err));
     });
 }
-
-const paginaAtual = window.location.pathname;
-let chartEvoInstance = null;
-let chartLojaInstance = null;
 
 // ==========================================
 // 2. MONITOR DE SESSÃO LOCAL E ROTEAMENTO
@@ -554,7 +554,7 @@ async function carregarGerenciamentoUsuarios(ident) {
 }
 
 // ==========================================
-// 8. AUDITORIA 701 - MOBILE (NUVEM, EAN E CUPOM TÉRMICO)
+// 8. AUDITORIA 701 - MOBILE (100% COMPLETÃO)
 // ==========================================
 async function carregarAuditoria701(ident) {
     if (!paginaAtual.includes('auditoria701.html')) return;
@@ -634,6 +634,7 @@ async function carregarAuditoria701(ident) {
         localStorage.setItem('audit701_cache_' + ident, JSON.stringify(dadosAgrupados));
     }
 
+    // Tela 1 - Puxar Lista
     document.getElementById('btnBaixarNuvem').addEventListener('click', async () => {
         const btn = document.getElementById('btnBaixarNuvem');
         const textoAntigo = btn.innerHTML;
@@ -667,19 +668,63 @@ async function carregarAuditoria701(ident) {
         btn.innerHTML = textoAntigo;
     });
 
+    // ==============================================================
+    // A MÁGICA DA SINCRONIZAÇÃO MULTIJOGADOR
+    // ==============================================================
     document.getElementById('btnSubirNuvem').addEventListener('click', async () => {
         const btn = document.getElementById('btnSubirNuvem');
         const textoAntigo = btn.innerHTML;
-        btn.innerHTML = `<span class="material-icons-round">sync</span> Subindo...`;
+        btn.innerHTML = `<span class="material-icons-round">sync</span> Sincronizando...`;
         
         try {
-            const pacote = { data: getDataLocalBR(), payload: dadosAgrupados };
+            // 1. BAIXA A NUVEM PRIMEIRO (Para não atropelar o que os outros fizeram)
+            const res = await fetch(API_URL + "?action=nuvem701&filial=" + filialCalculada);
+            const resposta = await res.json();
+            
+            if (resposta.json_data) {
+                const pacoteNuvem = JSON.parse(resposta.json_data);
+                
+                if (pacoteNuvem.data === getDataLocalBR()) {
+                    const dadosNuvem = pacoteNuvem.payload || {};
+                    
+                    // 2. MESCLA OS DADOS (Junta o seu celular com o computador e com a nuvem)
+                    Object.keys(dadosNuvem).forEach(chave => {
+                        // Se você não tem a seção, copia inteira da nuvem
+                        if (!dadosAgrupados[chave]) {
+                            dadosAgrupados[chave] = dadosNuvem[chave]; 
+                        } else {
+                            // Se você tem a seção, compara item a item
+                            dadosNuvem[chave].itens.forEach((itemNuvem, idx) => {
+                                // Se a nuvem tem resposta de alguém e você não, ele puxa pra sua tela
+                                if (itemNuvem.resposta !== null && dadosAgrupados[chave].itens[idx].resposta === null) {
+                                    dadosAgrupados[chave].itens[idx].resposta = itemNuvem.resposta;
+                                }
+                            });
+                            // Atualiza o status verde se alguém já enviou
+                            if (dadosNuvem[chave].enviado) {
+                                dadosAgrupados[chave].enviado = true;
+                            }
+                        }
+                    });
+                }
+            }
+
+            // 3. ATUALIZA A TELA E SALVA
+            salvarProgressoLocal();
+            renderizarListaTarefas();
+
+            // 4. AGORA SIM, SOBE O ARQUIVO UNIFICADO PARA A NUVEM
+            const pacoteUpload = { data: getDataLocalBR(), payload: dadosAgrupados };
             await fetch(API_URL, {
                 method: 'POST',
-                body: JSON.stringify({ tipo: "nuvem701", filial: filialCalculada, json_data: JSON.stringify(pacote) })
+                body: JSON.stringify({ tipo: "nuvem701", filial: filialCalculada, json_data: JSON.stringify(pacoteUpload) })
             });
-            mostrarModal("Progresso Salvo", "Dados na nuvem atualizados! A equipe já pode puxar as novidades.", "sucesso");
-        } catch (e) { mostrarModal("Erro no Envio", "Não foi possível enviar o progresso para a planilha.", "erro"); }
+            
+            mostrarModal("Sincronizado!", "Seu progresso subiu e o trabalho da equipe foi atualizado na sua tela.", "sucesso");
+            
+        } catch (e) { 
+            mostrarModal("Erro na Sincronização", "Verifique sua conexão com a internet.", "erro"); 
+        }
         btn.innerHTML = textoAntigo;
     });
 
@@ -721,7 +766,7 @@ async function carregarAuditoria701(ident) {
         if (qtdSecoes === 0) { mostrarModal("Formato Inválido", "Certifique-se de copiar as colunas separadas diretamente do Excel.", "erro"); return; }
 
         salvarProgressoLocal(); 
-        document.getElementById('btnSubirNuvem').click();
+        document.getElementById('btnSubirNuvem').click(); // Auto-Sincroniza ao criar
 
         document.getElementById('resumoTarefas').innerText = `${qtdSecoes} Seções para Auditar`;
         renderizarListaTarefas();
@@ -793,13 +838,13 @@ async function carregarAuditoria701(ident) {
         }
 
         const btnImprimir = document.getElementById('btnImprimirDeposito');
-        const btnWhatsApp = document.getElementById('btnWhatsAppDeposito'); // Captura o botão novo
+        const btnWhatsApp = document.getElementById('btnWhatsAppDeposito');
         if (temDeposito) {
             btnImprimir.classList.remove('hidden');
-            btnWhatsApp.classList.remove('hidden'); // Mostra se tiver depósito
+            btnWhatsApp.classList.remove('hidden');
         } else {
             btnImprimir.classList.add('hidden');
-            btnWhatsApp.classList.add('hidden'); // Esconde se não tiver depósito
+            btnWhatsApp.classList.add('hidden');
         }
     }
 
@@ -814,7 +859,7 @@ async function carregarAuditoria701(ident) {
             lista.innerHTML += `
                 <div class="item-card">
                     <div class="item-header">
-                        <button class="btn-ver-foto" onclick="buscarImagemProduto('${item.cod}', '${item.desc}')">
+                        <button class="btn-ver-foto" onclick="buscarImagemProduto('${item.cod}', '${item.desc.replace(/'/g, "\\'")}')">
                             <span class="material-icons-round">image</span> Ver Foto
                         </button>
                         <div class="item-cod">EAN: ${item.cod}</div>
@@ -854,7 +899,7 @@ async function carregarAuditoria701(ident) {
         renderizarListaTarefas();
         telaItens.classList.remove('ativa');
         telaTarefas.classList.add('ativa');
-        document.getElementById('btnSubirNuvem').click();
+        document.getElementById('btnSubirNuvem').click(); // Ao voltar, ele já mescla e sobe!
     });
 
     window.enviarSecao = async function(chave) {
@@ -1002,16 +1047,12 @@ async function carregarAuditoria701(ident) {
         });
     }
 
-    // ===============================================
-    // COMPARTILHAR LISTA NO WHATSAPP
-    // ===============================================
     const btnWhatsApp = document.getElementById('btnWhatsAppDeposito');
     if (btnWhatsApp) {
         btnWhatsApp.addEventListener('click', () => {
             let textoWhatsApp = `🚨 *SOLICITAÇÃO DE REPOSIÇÃO* 🚨\n📍 Filial: *${filialCalculada}*\n📅 Data: *${getDataLocalBR()}*\n\n`;
             let totalItens = 0;
 
-            // Varre as seções para agrupar os produtos de forma organizada
             Object.keys(dadosAgrupados).forEach(chave => {
                 const grupo = dadosAgrupados[chave];
                 let temItemNessaSecao = false;
@@ -1019,7 +1060,6 @@ async function carregarAuditoria701(ident) {
                 
                 grupo.itens.forEach(item => {
                     if (item.resposta === 'deposito') {
-                        // Formata o item com código, descrição e estoque
                         textoSecao += `📦 ${item.cod} - ${item.desc} (Estoque: ${item.estoque || '-'}) \n`;
                         temItemNessaSecao = true;
                         totalItens++;
@@ -1027,17 +1067,12 @@ async function carregarAuditoria701(ident) {
                 });
                 
                 if (temItemNessaSecao) {
-                    textoWhatsApp += textoSecao + '\n'; // Pula uma linha entre as seções
+                    textoWhatsApp += textoSecao + '\n'; 
                 }
             });
 
             if (totalItens === 0) return;
-
-            // Codifica o texto para o formato que a internet entende (espaços viram %20, etc)
             const textoCodificado = encodeURIComponent(textoWhatsApp);
-            
-            // Abre o link universal do WhatsApp
-            // No celular, isso abre direto o app perguntando pra quem mandar!
             window.open(`https://api.whatsapp.com/send?text=${textoCodificado}`, '_blank');
         });
     }
@@ -1052,23 +1087,19 @@ async function carregarAuditoria701(ident) {
         const descricao = document.getElementById('descImagemModal');
         const btnGoogle = document.getElementById('btnPesquisaGoogle');
         
-        // Remove espaços invisíveis, letras ou formatações erradas do Excel. Deixa só os números!
         const eanLimpo = String(cod).replace(/\D/g, '');
 
-        // 1. Prepara o Modal
         titulo.innerText = `EAN: ${eanLimpo || cod}`;
         descricao.innerText = desc;
         container.innerHTML = '<div class="loading-spinner"></div>';
         modal.classList.add('show');
         
-        // 2. Prepara o botão do Google (Saída de Emergência)
         btnGoogle.onclick = function() {
             const pesquisa = encodeURIComponent(desc + " produto");
             window.open(`https://www.google.com/search?tbm=isch&q=${pesquisa}`, '_blank');
         };
 
         try {
-            // TENTATIVA 1: Mercado Livre (Ótimo para Limpeza, Bazar e Bebidas)
             try {
                 const resML = await fetch(`https://api.mercadolibre.com/sites/MLB/search?q=${eanLimpo}`);
                 if (resML.ok) {
@@ -1076,37 +1107,29 @@ async function carregarAuditoria701(ident) {
                     if (dataML.results && dataML.results.length > 0) {
                         let imgUrl = dataML.results[0].thumbnail.replace("http://", "https://").replace("I.jpg", "O.jpg");
                         container.innerHTML = `<img src="${imgUrl}" alt="Foto do Produto">`;
-                        return; // Achou! Interrompe aqui.
+                        return; 
                     }
                 }
-            } catch (erroML) {
-                console.log("Bloqueio no ML, tentando próximo...");
-            }
+            } catch (erroML) {}
 
-            // TENTATIVA 2: OpenFoodFacts (Ótimo para Mercearia e Alimentos)
             try {
                 const resOFF = await fetch(`https://world.openfoodfacts.org/api/v0/product/${eanLimpo}.json`);
                 if (resOFF.ok) {
                     const dataOFF = await resOFF.json();
                     if (dataOFF.status === 1 && dataOFF.product && dataOFF.product.image_url) {
                         container.innerHTML = `<img src="${dataOFF.product.image_url}" alt="Foto do Produto">`;
-                        return; // Achou! Interrompe aqui.
+                        return;
                     }
                 }
-            } catch (erroOFF) {
-                console.log("Bloqueio no OFF...");
-            }
+            } catch (erroOFF) {}
 
-            // SE CHEGOU AQUI: Os bancos responderam, mas o produto realmente não existe lá
             container.innerHTML = `<div style="color: #64748b; font-size: 0.9rem; text-align: center;"><span class="material-icons-round" style="font-size: 2.5rem; display: block; margin-bottom: 5px; color: #cbd5e1;">image_not_supported</span>Foto não cadastrada nos bancos públicos.<br>Use o botão de busca abaixo.</div>`;
 
         } catch (err) {
-            // Falha crítica de rede (se o celular estiver sem internet, por exemplo)
             container.innerHTML = `<div style="color: #ef4444; font-size: 0.9rem; text-align: center;"><span class="material-icons-round" style="font-size: 2.5rem; display: block; margin-bottom: 5px; color: #fca5a5;">wifi_off</span>A rede bloqueou a consulta.<br>Use o botão de busca abaixo.</div>`;
         }
     };
 
-    // Fechar o Modal clicando no X
     const btnFecharImg = document.getElementById('btnFecharModalImagem');
     if (btnFecharImg) {
         btnFecharImg.addEventListener('click', () => {
